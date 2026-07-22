@@ -181,6 +181,20 @@ export interface Incident {
   resolvedAt: string | null;
 }
 
+export interface CostBreakdown {
+  replicas: number;
+  requestedCpuCores: number;
+  requestedMemoryGB: number;
+  actualCpuCores: number;
+  actualMemoryGB: number;
+  monthlyCpuCost: number;
+  monthlyMemoryCost: number;
+  monthlyCost: number;
+  optimizedMonthlyCost: number;
+  potentialMonthlySavings: number;
+  pricingNote: string;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

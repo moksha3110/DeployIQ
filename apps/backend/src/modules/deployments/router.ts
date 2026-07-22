@@ -15,6 +15,7 @@ import { computeHealthScore, LiveResourceNotFoundError } from '../analysis/healt
 import { generateRecommendations } from '../analysis/recommend.js';
 import { computeSecurityScore } from '../analysis/security-score.js';
 import { scanIncidents } from '../analysis/incidents.js';
+import { computeCostForDeployment } from '../analysis/cost.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
 import { deployLimiter } from '../../common/rate-limit.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
@@ -318,6 +319,20 @@ deploymentsRouter.get('/:id/incidents', async (req, res, next) => {
       })),
     );
   } catch (err) {
+    next(err);
+  }
+});
+
+deploymentsRouter.get('/:id/cost', async (req, res, next) => {
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const cost = await computeCostForDeployment(deployment.namespace!, APP_NAME);
+    res.json(cost);
+  } catch (err) {
+    if (err instanceof LiveResourceNotFoundError) {
+      next(new HttpError(409, 'NOT_LIVE', err.message));
+      return;
+    }
     next(err);
   }
 });
