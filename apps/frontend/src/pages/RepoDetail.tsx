@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useCreateDeployment } from '../lib/deployments';
 import { useBranches, useRepo } from '../lib/repos';
 
 export function RepoDetail() {
@@ -7,8 +8,19 @@ export function RepoDetail() {
   const { data: repo, isPending: repoPending, isError: repoError } = useRepo(id);
   const { data: branches, isPending: branchesPending } = useBranches(id);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const createDeployment = useCreateDeployment();
+  const navigate = useNavigate();
 
   const effectiveBranch = selectedBranch || repo?.defaultBranch || '';
+
+  async function handleDeploy() {
+    if (!id || !effectiveBranch) return;
+    const { deploymentId } = await createDeployment.mutateAsync({
+      repositoryId: id,
+      branch: effectiveBranch,
+    });
+    navigate(`/deployments/${deploymentId}`);
+  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-12">
@@ -64,12 +76,15 @@ export function RepoDetail() {
           </div>
 
           <button
-            disabled
-            title="Deploying lands in Milestone 3"
-            className="cursor-not-allowed rounded-lg bg-slate-300 px-5 py-2.5 font-medium text-slate-500"
+            onClick={handleDeploy}
+            disabled={createDeployment.isPending || !effectiveBranch}
+            className="rounded-lg bg-slate-900 px-5 py-2.5 font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
           >
-            Deploy {effectiveBranch && `"${effectiveBranch}"`} (coming in Milestone 3)
+            {createDeployment.isPending ? 'Starting deploy...' : `Deploy "${effectiveBranch}"`}
           </button>
+          {createDeployment.isError && (
+            <p className="text-sm text-red-600">Couldn't start the deployment. Please try again.</p>
+          )}
         </>
       )}
     </main>

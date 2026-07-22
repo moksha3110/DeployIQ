@@ -7,6 +7,7 @@ import { logger } from './common/logger.js';
 import { errorHandler, notFoundHandler } from './common/errors.js';
 import { authRouter } from './modules/auth/router.js';
 import { githubRouter } from './modules/github/router.js';
+import { deploymentsRouter } from './modules/deployments/router.js';
 
 const app = express();
 
@@ -23,11 +24,12 @@ app.get('/health', (_req, res) => {
   res.json(body);
 });
 
-// Feature routers (deployments, monitoring) are mounted here as their
-// milestones land — kept as a single flat list rather than nested sub-apps
-// so the full route surface stays visible from this one file.
+// Feature routers (monitoring) are mounted here as their milestones land —
+// kept as a single flat list rather than nested sub-apps so the full route
+// surface stays visible from this one file.
 app.use('/api/auth', authRouter);
 app.use('/api/repos', githubRouter);
+app.use('/api/deployments', deploymentsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

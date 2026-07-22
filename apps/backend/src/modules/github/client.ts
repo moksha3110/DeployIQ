@@ -95,3 +95,20 @@ export async function fetchBranches(
 
   return branches.map((b) => ({ name: b.name, isDefault: b.name === repo.defaultBranch }));
 }
+
+interface GithubBranchDetailResponse {
+  commit: { sha: string };
+}
+
+export async function fetchBranchCommitSha(
+  accessToken: string,
+  fullName: string,
+  branch: string,
+): Promise<string> {
+  const res = await githubFetch(
+    `/repos/${fullName}/branches/${encodeURIComponent(branch)}`,
+    accessToken,
+  );
+  const body = (await res.json()) as GithubBranchDetailResponse;
+  return body.commit.sha;
+}

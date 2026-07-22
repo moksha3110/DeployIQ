@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Dashboard } from './pages/Dashboard';
+import { DeploymentDetail } from './pages/DeploymentDetail';
 import { Login } from './pages/Login';
 import { RepoDetail } from './pages/RepoDetail';
 
@@ -21,6 +22,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <RepoDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/deployments/:id"
+        element={
+          <ProtectedRoute>
+            <DeploymentDetail />
           </ProtectedRoute>
         }
       />

@@ -17,6 +17,13 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   // AES-256-GCM key, 32 bytes hex-encoded (64 hex characters).
   ENCRYPTION_KEY: z.string().regex(/^[0-9a-f]{64}$/i, 'ENCRYPTION_KEY must be 64 hex characters'),
+
+  // All three optional together: when unset, built images stay local-only
+  // (tagged but never pushed) — enough to deploy onto Minikube's own Docker
+  // daemon in Milestone 4. Set them once a registry is wired up.
+  DOCKER_REGISTRY_USERNAME: z.string().optional(),
+  DOCKER_REGISTRY_PASSWORD: z.string().optional(),
+  DOCKER_REGISTRY: z.string().default('docker.io'),
 });
 
 const parsed = envSchema.safeParse(process.env);
