@@ -4,6 +4,7 @@ import {
   CoreV1Api,
   KubeConfig,
   NetworkingV1Api,
+  PolicyV1Api,
 } from '@kubernetes/client-node';
 
 // Loads from ~/.kube/config (or $KUBECONFIG) — exactly what `minikube start`
@@ -18,3 +19,4 @@ export const coreApi = kubeConfig.makeApiClient(CoreV1Api);
 export const appsApi = kubeConfig.makeApiClient(AppsV1Api);
 export const networkingApi = kubeConfig.makeApiClient(NetworkingV1Api);
 export const autoscalingApi = kubeConfig.makeApiClient(AutoscalingV2Api);
+export const policyApi = kubeConfig.makeApiClient(PolicyV1Api);

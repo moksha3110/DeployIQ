@@ -12,6 +12,7 @@ import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { requireAuth } from '../auth/middleware.js';
 import { computeHealthScore, LiveResourceNotFoundError } from '../analysis/health-score.js';
+import { generateRecommendations } from '../analysis/recommend.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
 import { deployLimiter } from '../../common/rate-limit.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
@@ -259,6 +260,20 @@ deploymentsRouter.get('/:id/health/history', async (req, res, next) => {
     }));
     res.json(body);
   } catch (err) {
+    next(err);
+  }
+});
+
+deploymentsRouter.get('/:id/recommendations', async (req, res, next) => {
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const result = await generateRecommendations(deployment.namespace!, APP_NAME);
+    res.json(result);
+  } catch (err) {
+    if (err instanceof LiveResourceNotFoundError) {
+      next(new HttpError(409, 'NOT_LIVE', err.message));
+      return;
+    }
     next(err);
   }
 });

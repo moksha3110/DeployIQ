@@ -120,6 +120,28 @@ export interface HealthScoreHistoryPoint {
   desiredReplicas: number;
 }
 
+export type RecommendationSeverity = 'low' | 'medium' | 'high';
+export type RecommendationCategory =
+  | 'resource-limits'
+  | 'probes'
+  | 'autoscaling'
+  | 'availability'
+  | 'other';
+
+export interface Recommendation {
+  category: RecommendationCategory;
+  severity: RecommendationSeverity;
+  problem: string;
+  reason: string;
+  impact: string;
+  fix: string;
+}
+
+export interface RecommendationsResponse {
+  recommendations: Recommendation[];
+  aiConfigured: boolean;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

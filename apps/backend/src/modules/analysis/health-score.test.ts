@@ -10,6 +10,7 @@ const healthySpec: LiveDeploymentSpec = {
   hasReadinessProbe: true,
   hasLivenessProbe: true,
   hasHpa: true,
+  hasPdb: false,
 };
 
 const healthyPods: LivePodStatus[] = [

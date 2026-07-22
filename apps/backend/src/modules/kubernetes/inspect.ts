@@ -1,4 +1,4 @@
-import { appsApi, autoscalingApi, coreApi } from './client.js';
+import { appsApi, autoscalingApi, coreApi, policyApi } from './client.js';
 
 // Read-back layer for M11: everything the deploy pipeline only ever writes
 // (manifests.ts/apply.ts), this module reads back from the live cluster so
@@ -19,6 +19,7 @@ export interface LiveDeploymentSpec {
   hasReadinessProbe: boolean;
   hasLivenessProbe: boolean;
   hasHpa: boolean;
+  hasPdb: boolean;
 }
 
 export interface LivePodStatus {
@@ -69,6 +70,14 @@ export async function getLiveDeploymentSpec(
     hasHpa = false;
   }
 
+  let hasPdb = false;
+  try {
+    const pdbs = await policyApi.listNamespacedPodDisruptionBudget(namespace);
+    hasPdb = pdbs.body.items.length > 0;
+  } catch {
+    hasPdb = false;
+  }
+
   return {
     image: container?.image ?? null,
     desiredReplicas: deployment.spec?.replicas ?? 0,
@@ -77,6 +86,7 @@ export async function getLiveDeploymentSpec(
     hasReadinessProbe: !!container?.readinessProbe,
     hasLivenessProbe: !!container?.livenessProbe,
     hasHpa,
+    hasPdb,
   };
 }
 

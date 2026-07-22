@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { AIAnalysisCard } from '../components/AIAnalysisCard';
 import { HealthScoreCard } from '../components/HealthScoreCard';
 import { MetricsPanel } from '../components/MetricsPanel';
+import { RecommendationsCard } from '../components/RecommendationsCard';
 import { useDeployment, useDeploymentLogs } from '../lib/deployments';
 
 // Namespace (and therefore metrics) only exists once the Kubernetes Service
@@ -74,6 +75,7 @@ export function DeploymentDetail() {
           {NAMESPACE_EXISTS_STATUSES.includes(deployment.status) && (
             <>
               <HealthScoreCard deploymentId={deployment.id} />
+              <RecommendationsCard deploymentId={deployment.id} />
               <MetricsPanel deploymentId={deployment.id} />
             </>
           )}
