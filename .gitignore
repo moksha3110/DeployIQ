@@ -12,3 +12,6 @@ Thumbs.db
 *.tsbuildinfo
 generated/
 .claude/scheduled_tasks.lock
+test-results/
+playwright-report/
+blob-report/

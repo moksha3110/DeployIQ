@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { logger } from './common/logger.js';
+import { enableLokiTransport, logger } from './common/logger.js';
 import { runBuildPipeline } from './modules/build/pipeline.js';
 import { runDeployPipeline } from './modules/kubernetes/pipeline.js';
 import { createRedisConnection } from './queues/connection.js';
@@ -32,3 +32,4 @@ deployWorker.on('failed', (job, err) => {
 });
 
 logger.info('worker listening on queues: build, deploy');
+void enableLokiTransport('worker');

@@ -1,13 +1,6 @@
+import { formatCpu, formatMemory } from '../lib/format';
 import { useDeploymentMetrics, useDeploymentMetricsHistory } from '../lib/monitoring';
 import { Sparkline } from './Sparkline';
-
-function formatCpu(cores: number): string {
-  return `${Math.round(cores * 1000)}m`;
-}
-
-function formatMemory(bytes: number): string {
-  return `${Math.round(bytes / (1024 * 1024))} MiB`;
-}
 
 export function MetricsPanel({ deploymentId }: { deploymentId: string }) {
   const { data: metrics } = useDeploymentMetrics(deploymentId, true);

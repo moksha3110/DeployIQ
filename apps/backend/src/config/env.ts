@@ -38,6 +38,16 @@ const envSchema = z.object({
   // extracting a root cause from a log excerpt.
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default('claude-haiku-4-5-20251001'),
+
+  // Off by default — logs still go to the console either way (see
+  // common/logger.ts). Requires the Loki stack from infra/loki/values.yaml
+  // to actually be installed; harmless but pointless to enable otherwise.
+  // z.coerce.boolean() is a trap here — Boolean("false") is true, since any
+  // non-empty string is truthy.
+  LOKI_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

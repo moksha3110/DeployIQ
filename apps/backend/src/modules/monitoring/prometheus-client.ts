@@ -1,45 +1,10 @@
-import { type ChildProcess, spawn } from 'node:child_process';
-import { findFreePort } from '../../common/free-port.js';
+import { createClusterForward } from '../../common/cluster-forward.js';
 
-const PROMETHEUS_NAMESPACE = 'monitoring';
-const PROMETHEUS_SERVICE = 'kube-prometheus-stack-prometheus';
-const PROMETHEUS_SERVICE_PORT = 9090;
-
-// Our backend runs on the host, outside the cluster. Minikube's Docker
-// driver on Windows/Mac only publishes a fixed handful of ports from the
-// node container (SSH, the Docker API, the K8s API server) — an arbitrary
-// NodePort is *not* reachable via `minikube ip:port` the way it would be on
-// a Linux VM driver. Same fix as the per-deployment public URLs: a
-// long-lived `kubectl port-forward`, held open for the life of this
-// process rather than one-shot per request.
-let forwardProcess: ChildProcess | null = null;
-let cachedBaseUrl: string | null = null;
-
-async function getPrometheusBaseUrl(): Promise<string> {
-  if (cachedBaseUrl && forwardProcess && !forwardProcess.killed) return cachedBaseUrl;
-
-  const port = await findFreePort();
-  const child = spawn(
-    'kubectl',
-    [
-      'port-forward',
-      '-n',
-      PROMETHEUS_NAMESPACE,
-      `svc/${PROMETHEUS_SERVICE}`,
-      `${port}:${PROMETHEUS_SERVICE_PORT}`,
-    ],
-    { stdio: 'ignore' },
-  );
-  forwardProcess = child;
-  child.on('exit', () => {
-    forwardProcess = null;
-    cachedBaseUrl = null;
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-  cachedBaseUrl = `http://localhost:${port}`;
-  return cachedBaseUrl;
-}
+const getPrometheusBaseUrl = createClusterForward(
+  'monitoring',
+  'kube-prometheus-stack-prometheus',
+  9090,
+);
 
 export class PrometheusQueryError extends Error {}
 

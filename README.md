@@ -1,4 +1,4 @@
-# AI-Powered Kubernetes Deployment Platform
+# DeployIQ — AI-Powered Kubernetes Deployment Platform
 
 A self-hosted deployment platform (Render/Railway/Heroku-style) built from
 scratch: GitHub OAuth login, one-click deploy of any repo onto a real
@@ -7,14 +7,57 @@ automatic redeploy on push, and an AI assistant that diagnoses failed
 deployments from logs and pod events.
 
 Built as a portfolio project to demonstrate distributed systems, container
-orchestration, and applied AI engineering — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-for the full design rationale.
+orchestration, and applied AI engineering — see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design
+rationale, including _why_ each technology was chosen, not just that it
+was used.
 
 ## Status
 
-In active development, built milestone by milestone. See
-[`docs/MILESTONES.md`](docs/MILESTONES.md) for the roadmap and current
-progress.
+All 11 milestones complete — see [`docs/MILESTONES.md`](docs/MILESTONES.md)
+for the build order, and what changed from the original plan along the way
+(and why: every deviation is a decision, not a shortcut).
+
+Every milestone in this repo was verified against real infrastructure while
+being built — a real GitHub account, a real Minikube cluster, a real Docker
+daemon, a real Prometheus/Loki/Grafana stack — not just typechecked and
+assumed to work. Where that verification found a real bug (there were
+several — an unhandled Redis error crashing the backend, a webhook handler
+crashing on unauthenticated malformed input, an authorization gap, a
+broken third-party logging library), it's called out explicitly in the
+relevant doc rather than smoothed over.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant FE as Frontend
+    participant API as Backend API
+    participant W as Worker (Build + Deploy)
+    participant GH as GitHub
+    participant K8s as Kubernetes
+    participant AI as Claude (on failure)
+
+    U->>FE: Sign in with GitHub
+    FE->>API: browse repos
+    U->>FE: click Deploy
+    API->>W: enqueue build job
+    W->>GH: clone repo @ commit
+    W->>W: detect stack, docker build, scan (Trivy)
+    W->>K8s: apply manifests, watch rollout
+    alt succeeds
+        K8s-->>FE: RUNNING + public URL
+    else fails
+        W->>AI: log excerpt -> diagnosis
+        AI-->>FE: root cause + suggested fixes
+    end
+    GH-->>API: push webhook (if auto-deploy enabled)
+    API->>W: enqueue build job (repeat)
+```
+
+The full component breakdown, sequence diagrams, and the reasoning behind
+each piece live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Docs
 
@@ -22,21 +65,21 @@ progress.
 - [API design](docs/API.md) — REST endpoints
 - [Kubernetes design](docs/KUBERNETES.md) — generated manifests, namespacing, rollout verification
 - [Security posture](docs/SECURITY.md) — secrets, auth, injection, rate limiting, scanning, explicit gaps
-- [Milestones](docs/MILESTONES.md) — build order and current status
+- [Milestones](docs/MILESTONES.md) — build order, current status, and what changed from the original plan
 
 ## Structure
 
 ```
 apps/
-  frontend/      React + TS + Tailwind SPA
-  backend/       Express + TS API server, BullMQ worker, Prisma schema
+  frontend/      React + TS + Tailwind SPA, Vitest unit tests, Playwright e2e (apps/frontend/e2e/)
+  backend/       Express + TS API server, BullMQ worker, Prisma schema, Vitest unit tests
 packages/
   shared-types/  DTOs shared between frontend and backend
 infra/
-  docker/        Dockerfiles, docker-compose for local dev
-  k8s/            Platform-level manifests (stretch: run the platform on k8s itself)
-  prometheus/ grafana/ loki/   Observability stack config
-docs/            Architecture, API, and milestone docs
+  docker/        docker-compose for local Postgres + Redis
+  prometheus/    kube-prometheus-stack Helm values (Prometheus + Grafana)
+  loki/          loki-stack Helm values (Loki + Promtail)
+docs/            Architecture, API, Kubernetes, security, and milestone docs
 ```
 
 ## Local development
@@ -49,26 +92,43 @@ npm install
 # Postgres + Redis
 docker compose -f infra/docker/docker-compose.yml up -d
 
-# Copy env files and fill in secrets as milestones require them
+# Copy env files and fill in secrets (see comments in each .env.example
+# for where to get them — GitHub OAuth App, Anthropic API key, etc.)
 cp apps/backend/.env.example apps/backend/.env
 cp apps/frontend/.env.example apps/frontend/.env
 
 # Apply the schema
 npm run prisma:migrate --workspace apps/backend
 
-# Terminal 1
+# Terminal 1 — API server
 npm run dev:backend
-# Terminal 2
+# Terminal 2 — build/deploy worker
+npm run dev:worker --workspace apps/backend
+# Terminal 3 — frontend
 npm run dev:frontend
 ```
 
-Backend on `http://localhost:4000`, frontend on `http://localhost:5173`. The
-dashboard's scaffolding check should show `backend ok`.
+Backend on `http://localhost:4000`, frontend on `http://localhost:5173`.
+Sign in with GitHub, browse your repos, click Deploy.
 
-`npm run lint` / `npm run typecheck` / `npm run build` run across all
-workspaces and are what CI checks on every push.
+`npm run lint` / `npm run typecheck` / `npm run build` / `npm run test` run
+across all workspaces and are what CI checks on every push.
 
-### Deploying to Kubernetes (Milestone 4+)
+### Testing
+
+```bash
+# Unit tests (Vitest, both workspaces)
+npm run test
+
+# End-to-end (Playwright, mocked API — no backend needed)
+npx playwright install chromium   # once
+npm run test:e2e --workspace apps/frontend
+```
+
+Both are required CI jobs. See [docs/MILESTONES.md](docs/MILESTONES.md#m9)
+for why e2e mocks the API instead of exercising real GitHub OAuth.
+
+### Deploying to Kubernetes
 
 Requires Minikube and `kubectl`.
 
@@ -77,22 +137,35 @@ minikube start --driver=docker
 ```
 
 The backend then talks to whatever cluster your kubeconfig points at — no
-separate config needed, same code path as a real cluster.
+separate config needed, same code path as a real cluster. Deploys land in
+their own namespace and get a real local URL via a managed
+`kubectl port-forward` — see [docs/KUBERNETES.md](docs/KUBERNETES.md) for
+why (short version: Minikube's Docker driver doesn't expose NodePorts the
+way a real cluster or a Linux VM driver does, confirmed against a real
+cluster rather than assumed).
 
-### Monitoring stack (Milestone 5+)
+### Monitoring stack (Prometheus, Grafana, Loki)
 
 Requires Helm.
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+
 helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring --create-namespace \
   -f infra/prometheus/values.yaml --wait
+
+helm install loki grafana/loki-stack \
+  --namespace monitoring \
+  -f infra/loki/values.yaml --wait
 ```
 
-The backend reaches Prometheus via its own managed `kubectl port-forward`
-(see `modules/monitoring/prometheus-client.ts`) — nothing else to configure.
-To view Grafana yourself:
+The backend reaches Prometheus and Loki via its own managed
+`kubectl port-forward`s — nothing else to configure. Set `LOKI_ENABLED=true`
+in `apps/backend/.env` to ship the platform's own structured logs there
+too (off by default; logs always go to the console either way). To view
+Grafana yourself:
 
 ```bash
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80

@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import type { HealthResponse } from '@platform/shared-types';
 import { env } from './config/env.js';
-import { logger } from './common/logger.js';
+import { enableLokiTransport, logger } from './common/logger.js';
 import { errorHandler, notFoundHandler } from './common/errors.js';
 import { apiLimiter, webhookLimiter } from './common/rate-limit.js';
 import { authRouter } from './modules/auth/router.js';
@@ -49,4 +49,5 @@ app.use(errorHandler);
 
 app.listen(env.PORT, () => {
   logger.info(`backend listening on port ${env.PORT}`);
+  void enableLokiTransport('server');
 });

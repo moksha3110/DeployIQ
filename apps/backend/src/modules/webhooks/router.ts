@@ -1,10 +1,10 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { decrypt } from '../../common/crypto.js';
 import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { createDeployment } from '../deployments/create.js';
+import { verifySignature } from './signature.js';
 
 export const webhooksRouter = Router();
 
@@ -19,17 +19,6 @@ const pushPayloadSchema = z.object({
 });
 
 const ZERO_SHA = '0'.repeat(40);
-
-function verifySignature(rawBody: Buffer, secret: string, header: string | undefined): boolean {
-  if (!header) return false;
-  const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');
-  const expectedBuf = Buffer.from(expected);
-  const actualBuf = Buffer.from(header);
-  // timingSafeEqual throws on length mismatch rather than returning false —
-  // guard explicitly instead of letting a malformed header 500 the request.
-  if (expectedBuf.length !== actualBuf.length) return false;
-  return timingSafeEqual(expectedBuf, actualBuf);
-}
 
 // Raw body needed for HMAC verification — must run before the app-wide
 // express.json() (see server.ts, this router is mounted ahead of it) or

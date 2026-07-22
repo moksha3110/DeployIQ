@@ -1,0 +1,20 @@
+# Minimal footprint for local Minikube dev, same spirit as ../prometheus/values.yaml.
+# Grafana is already installed via kube-prometheus-stack — don't install a
+# second one. Promtail ships free bonus coverage: it scrapes every pod's
+# container logs on the node, which means logs from *deployed user apps*
+# show up in Grafana/Loki automatically, not just this platform's own logs.
+
+grafana:
+  enabled: false
+
+promtail:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { cpu: 100m, memory: 128Mi }
+
+loki:
+  persistence:
+    enabled: false # ephemeral is fine for local dev; logs don't need to survive a cluster restart
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 200m, memory: 256Mi }
