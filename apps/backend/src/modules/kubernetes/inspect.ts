@@ -1,4 +1,4 @@
-import { appsApi, autoscalingApi, coreApi, policyApi } from './client.js';
+import { appsApi, autoscalingApi, coreApi, networkingApi, policyApi } from './client.js';
 
 // Read-back layer for M11: everything the deploy pipeline only ever writes
 // (manifests.ts/apply.ts), this module reads back from the live cluster so
@@ -11,8 +11,16 @@ export interface LiveResources {
   limits: { cpu: string | null; memory: string | null };
 }
 
+export interface LiveSecurityContext {
+  runAsNonRoot: boolean | null;
+  privileged: boolean | null;
+  allowPrivilegeEscalation: boolean | null;
+  readOnlyRootFilesystem: boolean | null;
+}
+
 export interface LiveDeploymentSpec {
   image: string | null;
+  imageTag: string | null;
   desiredReplicas: number;
   availableReplicas: number;
   resources: LiveResources | null;
@@ -20,6 +28,8 @@ export interface LiveDeploymentSpec {
   hasLivenessProbe: boolean;
   hasHpa: boolean;
   hasPdb: boolean;
+  securityContext: LiveSecurityContext;
+  hasHostPathVolume: boolean;
 }
 
 export interface LivePodStatus {
@@ -78,8 +88,27 @@ export async function getLiveDeploymentSpec(
     hasPdb = false;
   }
 
+  const imageTag = container?.image?.includes(':')
+    ? (container.image.split(':').pop() ?? null)
+    : null; // no ':' at all means Docker will resolve it as "latest"
+
+  // Kubernetes lets a container-level securityContext override the pod-level
+  // one field-by-field; container wins where set, pod-level is the fallback.
+  const podSecurityContext = deployment.spec?.template.spec?.securityContext;
+  const containerSecurityContext = container?.securityContext;
+  const securityContext: LiveSecurityContext = {
+    runAsNonRoot:
+      containerSecurityContext?.runAsNonRoot ?? podSecurityContext?.runAsNonRoot ?? null,
+    privileged: containerSecurityContext?.privileged ?? null,
+    allowPrivilegeEscalation: containerSecurityContext?.allowPrivilegeEscalation ?? null,
+    readOnlyRootFilesystem: containerSecurityContext?.readOnlyRootFilesystem ?? null,
+  };
+
+  const hasHostPathVolume = !!deployment.spec?.template.spec?.volumes?.some((v) => v.hostPath);
+
   return {
     image: container?.image ?? null,
+    imageTag,
     desiredReplicas: deployment.spec?.replicas ?? 0,
     availableReplicas: deployment.status?.availableReplicas ?? 0,
     resources,
@@ -87,7 +116,23 @@ export async function getLiveDeploymentSpec(
     hasLivenessProbe: !!container?.livenessProbe,
     hasHpa,
     hasPdb,
+    securityContext,
+    hasHostPathVolume,
   };
+}
+
+export async function getServiceType(namespace: string, appName: string): Promise<string | null> {
+  try {
+    const res = await coreApi.readNamespacedService(appName, namespace);
+    return res.body.spec?.type ?? 'ClusterIP';
+  } catch {
+    return null;
+  }
+}
+
+export async function hasNetworkPolicy(namespace: string): Promise<boolean> {
+  const res = await networkingApi.listNamespacedNetworkPolicy(namespace);
+  return res.body.items.length > 0;
 }
 
 export async function getLivePods(namespace: string, appName: string): Promise<LivePodStatus[]> {

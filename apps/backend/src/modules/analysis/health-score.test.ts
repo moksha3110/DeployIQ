@@ -4,6 +4,7 @@ import type { LiveDeploymentSpec, LivePodStatus } from '../kubernetes/inspect.js
 
 const healthySpec: LiveDeploymentSpec = {
   image: 'app:sha',
+  imageTag: 'sha',
   desiredReplicas: 1,
   availableReplicas: 1,
   resources: { requests: { cpu: '100m', memory: '128Mi' }, limits: { cpu: '500m', memory: '512Mi' } },
@@ -11,6 +12,13 @@ const healthySpec: LiveDeploymentSpec = {
   hasLivenessProbe: true,
   hasHpa: true,
   hasPdb: false,
+  securityContext: {
+    runAsNonRoot: null,
+    privileged: null,
+    allowPrivilegeEscalation: null,
+    readOnlyRootFilesystem: null,
+  },
+  hasHostPathVolume: false,
 };
 
 const healthyPods: LivePodStatus[] = [

@@ -142,6 +142,23 @@ export interface RecommendationsResponse {
   aiConfigured: boolean;
 }
 
+export type SecuritySeverity = 'critical' | 'high' | 'medium' | 'low';
+export type SecurityGrade = 'A' | 'B' | 'C' | 'D' | 'F';
+
+export interface SecurityFinding {
+  id: string;
+  severity: SecuritySeverity;
+  title: string;
+  description: string;
+  fix: string;
+}
+
+export interface SecurityScore {
+  score: number;
+  grade: SecurityGrade;
+  findings: SecurityFinding[];
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;
