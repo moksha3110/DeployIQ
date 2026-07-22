@@ -4,12 +4,14 @@ import { z } from 'zod';
 import type {
   DeploymentAnalysis,
   DeploymentSummary,
+  HealthScoreHistoryPoint,
   PaginatedResult,
 } from '@platform/shared-types';
 import { HttpError } from '../../common/errors.js';
 import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { requireAuth } from '../auth/middleware.js';
+import { computeHealthScore, LiveResourceNotFoundError } from '../analysis/health-score.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
 import { deployLimiter } from '../../common/rate-limit.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
@@ -19,6 +21,11 @@ import type { LogLine } from './log.js';
 
 export const deploymentsRouter = Router();
 deploymentsRouter.use(requireAuth);
+
+// Matches modules/kubernetes/pipeline.ts — every deployment's Deployment/
+// Service/Ingress/HPA is named "app" within its own namespace, so nothing
+// downstream needs the platform's internal deployment id to look it up.
+const APP_NAME = 'app';
 
 function toSummary(deployment: {
   id: string;
@@ -209,6 +216,48 @@ deploymentsRouter.get('/:id/metrics/history', async (req, res, next) => {
     const deployment = await findDeploymentOrFail(req);
     const history = await getHistory(deployment.namespace!, parsed.data.range);
     res.json(history);
+  } catch (err) {
+    next(err);
+  }
+});
+
+deploymentsRouter.get('/:id/health', async (req, res, next) => {
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const health = await computeHealthScore(deployment.namespace!, APP_NAME);
+    res.json(health);
+  } catch (err) {
+    if (err instanceof LiveResourceNotFoundError) {
+      next(new HttpError(409, 'NOT_LIVE', err.message));
+      return;
+    }
+    next(err);
+  }
+});
+
+const healthHistoryQuerySchema = z.object({ limit: z.coerce.number().int().positive().max(500).default(200) });
+
+deploymentsRouter.get('/:id/health/history', async (req, res, next) => {
+  const parsed = healthHistoryQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    next(new HttpError(400, 'INVALID_QUERY', 'Invalid query parameters', parsed.error.flatten()));
+    return;
+  }
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const rows = await prisma.deploymentSnapshot.findMany({
+      where: { deploymentId: deployment.id },
+      orderBy: { createdAt: 'asc' },
+      take: parsed.data.limit,
+    });
+    const body: HealthScoreHistoryPoint[] = rows.map((row) => ({
+      timestamp: row.createdAt.toISOString(),
+      score: row.healthScore,
+      restarts: row.restarts,
+      availableReplicas: row.availableReplicas,
+      desiredReplicas: row.desiredReplicas,
+    }));
+    res.json(body);
   } catch (err) {
     next(err);
   }

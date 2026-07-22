@@ -99,6 +99,27 @@ export interface AutoDeployStatus {
   enabled: boolean;
 }
 
+export interface HealthScoreFactor {
+  category: string;
+  deduction: number;
+  reason: string;
+}
+
+export interface HealthScore {
+  score: number;
+  label: 'Excellent' | 'Good' | 'Fair' | 'Poor' | 'Critical';
+  factors: HealthScoreFactor[];
+  metrics: DeploymentMetrics;
+}
+
+export interface HealthScoreHistoryPoint {
+  timestamp: string;
+  score: number;
+  restarts: number;
+  availableReplicas: number;
+  desiredReplicas: number;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

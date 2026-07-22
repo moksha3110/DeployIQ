@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AIAnalysisCard } from '../components/AIAnalysisCard';
+import { HealthScoreCard } from '../components/HealthScoreCard';
 import { MetricsPanel } from '../components/MetricsPanel';
 import { useDeployment, useDeploymentLogs } from '../lib/deployments';
 
@@ -71,7 +72,10 @@ export function DeploymentDetail() {
           )}
 
           {NAMESPACE_EXISTS_STATUSES.includes(deployment.status) && (
-            <MetricsPanel deploymentId={deployment.id} />
+            <>
+              <HealthScoreCard deploymentId={deployment.id} />
+              <MetricsPanel deploymentId={deployment.id} />
+            </>
           )}
 
           <div className="flex flex-col gap-2">

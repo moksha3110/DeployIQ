@@ -130,9 +130,32 @@ model Deployment {
 
   logs        DeploymentLog[]
   aiAnalyses  AIAnalysis[]
+  snapshots   DeploymentSnapshot[]
 
   @@index([repositoryId, createdAt])
   @@index([userId, status])
+}
+
+// Periodic point-in-time capture of a running deployment's health, taken by
+// the snapshot worker (see queues/snapshot-queue.ts) every 5 minutes.
+// Exists independently of Prometheus's own retention so M11 analytics/trend
+// views aren't bounded by however long the cluster happens to keep raw
+// metric samples.
+model DeploymentSnapshot {
+  id           String     @id @default(uuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  healthScore       Int
+  cpuCores          Float
+  memoryBytes       Float
+  restarts          Int
+  desiredReplicas   Int
+  availableReplicas Int
+
+  createdAt DateTime @default(now())
+
+  @@index([deploymentId, createdAt])
 }
 
 // MVP log persistence. Superseded by Loki-backed streaming in a later
