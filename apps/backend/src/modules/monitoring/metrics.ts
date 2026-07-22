@@ -50,7 +50,12 @@ export async function getSnapshot(namespace: string): Promise<DeploymentMetrics>
   };
 }
 
-const RANGE_SECONDS: Record<MetricsRange, number> = { '1h': 3600, '24h': 86400, '7d': 604800 };
+const RANGE_SECONDS: Record<MetricsRange, number> = {
+  '1h': 3600,
+  '24h': 86400,
+  '7d': 604800,
+  '30d': 2592000,
+};
 
 function toSeries(samples: RangeSample[]): DeploymentMetricsHistory['cpu'] {
   return samples.map((s) => ({ timestamp: s.timestamp * 1000, value: s.value }));

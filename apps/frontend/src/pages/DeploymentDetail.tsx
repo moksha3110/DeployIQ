@@ -83,6 +83,12 @@ export function DeploymentDetail() {
               <SecurityScoreCard deploymentId={deployment.id} />
               <RecommendationsCard deploymentId={deployment.id} />
               <MetricsPanel deploymentId={deployment.id} />
+              <Link
+                to={`/deployments/${deployment.id}/analytics`}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                View full resource analytics &rarr;
+              </Link>
             </>
           )}
 

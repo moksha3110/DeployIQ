@@ -185,7 +185,7 @@ deploymentsRouter.post('/:id/rollback', deployLimiter, async (req, res, next) =>
   }
 });
 
-const metricsRangeSchema = z.object({ range: z.enum(['1h', '24h', '7d']).default('1h') });
+const metricsRangeSchema = z.object({ range: z.enum(['1h', '24h', '7d', '30d']).default('1h') });
 
 async function findDeploymentOrFail(req: Request) {
   const id = req.params.id;
@@ -239,7 +239,7 @@ deploymentsRouter.get('/:id/health', async (req, res, next) => {
   }
 });
 
-const healthHistoryQuerySchema = z.object({ limit: z.coerce.number().int().positive().max(500).default(200) });
+const healthHistoryQuerySchema = z.object({ limit: z.coerce.number().int().positive().max(2000).default(200) });
 
 deploymentsRouter.get('/:id/health/history', async (req, res, next) => {
   const parsed = healthHistoryQuerySchema.safeParse(req.query);

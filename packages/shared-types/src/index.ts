@@ -85,7 +85,7 @@ export interface DeploymentMetricsHistory {
   memory: MetricSample[];
 }
 
-export type MetricsRange = '1h' | '24h' | '7d';
+export type MetricsRange = '1h' | '24h' | '7d' | '30d';
 
 export interface DeploymentAnalysis {
   rootCause: string;
