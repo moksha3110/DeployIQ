@@ -66,3 +66,35 @@ dashboard's scaffolding check should show `backend ok`.
 
 `npm run lint` / `npm run typecheck` / `npm run build` run across all
 workspaces and are what CI checks on every push.
+
+### Deploying to Kubernetes (Milestone 4+)
+
+Requires Minikube and `kubectl`.
+
+```bash
+minikube start --driver=docker
+```
+
+The backend then talks to whatever cluster your kubeconfig points at — no
+separate config needed, same code path as a real cluster.
+
+### Monitoring stack (Milestone 5+)
+
+Requires Helm.
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace \
+  -f infra/prometheus/values.yaml --wait
+```
+
+The backend reaches Prometheus via its own managed `kubectl port-forward`
+(see `modules/monitoring/prometheus-client.ts`) — nothing else to configure.
+To view Grafana yourself:
+
+```bash
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+# admin / $(kubectl get secret -n monitoring kube-prometheus-stack-grafana \
+#   -o jsonpath="{.data.admin-password}" | base64 -d)
+```

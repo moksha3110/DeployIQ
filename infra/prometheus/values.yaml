@@ -1,0 +1,42 @@
+# Minimal footprint for local Minikube dev — not sized for production.
+# Alertmanager is dropped entirely (nothing here pages anyone); Prometheus
+# gets a short retention window since this is a demo cluster, not a system
+# of record.
+#
+# NodePort below is set for parity with a real cluster's setup, but on
+# Minikube's Docker driver (Windows/Mac) it is NOT reachable via
+# `minikube ip:port` — that driver only publishes a fixed handful of ports
+# from the node container. Both our backend (Monitoring Service) and you,
+# manually, reach these services via `kubectl port-forward` instead — see
+# docs/ARCHITECTURE.md and modules/monitoring/prometheus-client.ts.
+
+alertmanager:
+  enabled: false
+
+grafana:
+  service:
+    type: NodePort
+    nodePort: 30030
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 200m, memory: 256Mi }
+
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 30090
+  prometheusSpec:
+    retention: 6h
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { cpu: 100m, memory: 128Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 64Mi }

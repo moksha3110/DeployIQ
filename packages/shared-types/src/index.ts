@@ -66,6 +66,27 @@ export interface DeploymentSummary {
   updatedAt: string;
 }
 
+export interface DeploymentMetrics {
+  podCount: number;
+  desiredReplicas: number;
+  availableReplicas: number;
+  cpuCores: number;
+  memoryBytes: number;
+  restarts: number;
+}
+
+export interface MetricSample {
+  timestamp: number; // epoch millis
+  value: number;
+}
+
+export interface DeploymentMetricsHistory {
+  cpu: MetricSample[];
+  memory: MetricSample[];
+}
+
+export type MetricsRange = '1h' | '24h' | '7d';
+
 export interface ApiErrorBody {
   error: {
     code: string;

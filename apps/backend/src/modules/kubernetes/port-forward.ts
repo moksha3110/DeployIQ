@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { createServer } from 'node:net';
+import { findFreePort } from '../../common/free-port.js';
 
 // We generate a real Ingress (see manifests.ts) for architectural parity
 // with a production cluster, but making it *clickable* on a developer's
@@ -8,18 +8,6 @@ import { createServer } from 'node:net';
 // on Minikube or any other cluster reachable via kubeconfig, so it's what
 // actually backs the publicUrl shown in the UI for local dev.
 const activeForwards = new Map<string, ChildProcess>();
-
-async function findFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = createServer();
-    server.listen(0, () => {
-      const address = server.address();
-      const port = typeof address === 'object' && address ? address.port : 0;
-      server.close(() => resolve(port));
-    });
-    server.on('error', reject);
-  });
-}
 
 export async function startPortForward(namespace: string, serviceName: string): Promise<number> {
   stopPortForward(namespace);

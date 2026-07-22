@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { DeploymentSummary, PaginatedResult } from '@platform/shared-types';
@@ -7,6 +8,7 @@ import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { requireAuth } from '../auth/middleware.js';
 import { fetchBranchCommitSha, fetchRepository } from '../github/client.js';
+import { getHistory, getSnapshot } from '../monitoring/metrics.js';
 import { enqueueBuildJob } from '../../queues/build-queue.js';
 import { deploymentLogChannel, redisPublisher } from '../../queues/pubsub.js';
 import type { LogLine } from './log.js';
@@ -149,6 +151,46 @@ deploymentsRouter.get('/:id', async (req, res, next) => {
       return;
     }
     res.json({ ...toSummary(deployment), repositoryFullName: deployment.repository.fullName });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const metricsRangeSchema = z.object({ range: z.enum(['1h', '24h', '7d']).default('1h') });
+
+async function findDeploymentOrFail(req: Request) {
+  const id = req.params.id;
+  if (!id) throw new HttpError(400, 'INVALID_PARAMS', 'Missing deployment id');
+  const deployment = await prisma.deployment.findFirst({
+    where: { id, userId: req.userId! },
+  });
+  if (!deployment) throw new HttpError(404, 'NOT_FOUND', 'Deployment not found');
+  if (!deployment.namespace) {
+    throw new HttpError(409, 'NOT_DEPLOYED', 'This deployment has no running namespace yet');
+  }
+  return deployment;
+}
+
+deploymentsRouter.get('/:id/metrics', async (req, res, next) => {
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const snapshot = await getSnapshot(deployment.namespace!);
+    res.json(snapshot);
+  } catch (err) {
+    next(err);
+  }
+});
+
+deploymentsRouter.get('/:id/metrics/history', async (req, res, next) => {
+  const parsed = metricsRangeSchema.safeParse(req.query);
+  if (!parsed.success) {
+    next(new HttpError(400, 'INVALID_QUERY', 'Invalid query parameters', parsed.error.flatten()));
+    return;
+  }
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const history = await getHistory(deployment.namespace!, parsed.data.range);
+    res.json(history);
   } catch (err) {
     next(err);
   }

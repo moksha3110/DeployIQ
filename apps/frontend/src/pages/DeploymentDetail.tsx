@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { MetricsPanel } from '../components/MetricsPanel';
 import { useDeployment, useDeploymentLogs } from '../lib/deployments';
+
+// Namespace (and therefore metrics) only exists once the Kubernetes Service
+// has started applying manifests — see modules/kubernetes/pipeline.ts.
+const NAMESPACE_EXISTS_STATUSES = ['DEPLOYING', 'RUNNING', 'DEPLOY_FAILED'];
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-slate-100 text-slate-600',
@@ -57,6 +62,10 @@ export function DeploymentDetail() {
             >
               {deployment.publicUrl}
             </a>
+          )}
+
+          {NAMESPACE_EXISTS_STATUSES.includes(deployment.status) && (
+            <MetricsPanel deploymentId={deployment.id} />
           )}
 
           <div className="flex flex-col gap-2">
