@@ -1,6 +1,7 @@
 import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { computeHealthScore, LiveResourceNotFoundError } from './health-score.js';
+import { scanIncidents } from './incidents.js';
 
 const APP_NAME = 'app';
 
@@ -30,6 +31,7 @@ export async function snapshotAllRunningDeployments(): Promise<void> {
           availableReplicas: health.metrics.availableReplicas,
         },
       });
+      await scanIncidents(deployment.id, deployment.namespace!, APP_NAME);
     } catch (err) {
       // A single deployment's namespace having been torn down mid-scan (or
       // any other live-cluster hiccup) shouldn't stop the rest of the batch

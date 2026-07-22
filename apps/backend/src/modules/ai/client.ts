@@ -172,3 +172,59 @@ export async function recommend(context: { summary: string }): Promise<Recommend
   const input = toolUse.input as { recommendations: Recommendation[] };
   return { recommendations: input.recommendations, raw: message };
 }
+
+export type IncidentPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface IncidentDiagnosis {
+  rootCause: string;
+  recommendedAction: string;
+  priority: IncidentPriority;
+}
+
+const INCIDENT_TOOL: Anthropic.Tool = {
+  name: 'report_incident',
+  description: 'Report a structured diagnosis of an active Kubernetes incident.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      rootCause: {
+        type: 'string',
+        description: 'A concise (1-3 sentence) explanation of what is actually wrong, grounded in the pod status and events given.',
+      },
+      recommendedAction: {
+        type: 'string',
+        description: 'The single most useful next step to take right now, as a concrete command or config change.',
+      },
+      priority: {
+        type: 'string',
+        enum: ['low', 'medium', 'high', 'critical'],
+        description: 'How urgently this needs attention: critical = full outage now, high = degraded/at risk, medium = not yet impacting availability, low = cosmetic.',
+      },
+    },
+    required: ['rootCause', 'recommendedAction', 'priority'],
+  },
+};
+
+const INCIDENT_SYSTEM_PROMPT = `You are a Kubernetes on-call assistant. You are given the type of problem already detected (e.g. CrashLoopBackOff, OOMKilled, ImagePullBackOff, unschedulable Pending pod), the current pod statuses, and recent namespace events. Give the real root cause implied by the evidence — not just a restatement of the incident type — the single most useful next action, and an honest priority. Respond only by calling report_incident.`;
+
+export async function diagnoseIncident(context: { summary: string }): Promise<IncidentDiagnosis> {
+  const anthropic = getClient();
+
+  const message = await anthropic.messages.create({
+    model: env.ANTHROPIC_MODEL,
+    max_tokens: 512,
+    system: INCIDENT_SYSTEM_PROMPT,
+    tools: [INCIDENT_TOOL],
+    tool_choice: { type: 'tool', name: 'report_incident' },
+    messages: [{ role: 'user', content: context.summary }],
+  });
+
+  const toolUse = message.content.find(
+    (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
+  );
+  if (!toolUse) {
+    throw new Error('Model did not return a structured incident diagnosis');
+  }
+
+  return toolUse.input as IncidentDiagnosis;
+}

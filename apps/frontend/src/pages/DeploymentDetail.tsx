@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AIAnalysisCard } from '../components/AIAnalysisCard';
 import { HealthScoreCard } from '../components/HealthScoreCard';
+import { IncidentsPanel } from '../components/IncidentsPanel';
 import { MetricsPanel } from '../components/MetricsPanel';
 import { RecommendationsCard } from '../components/RecommendationsCard';
 import { SecurityScoreCard } from '../components/SecurityScoreCard';
@@ -76,6 +77,7 @@ export function DeploymentDetail() {
           {NAMESPACE_EXISTS_STATUSES.includes(deployment.status) && (
             <>
               <HealthScoreCard deploymentId={deployment.id} />
+              <IncidentsPanel deploymentId={deployment.id} />
               <SecurityScoreCard deploymentId={deployment.id} />
               <RecommendationsCard deploymentId={deployment.id} />
               <MetricsPanel deploymentId={deployment.id} />

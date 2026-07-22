@@ -135,6 +135,39 @@ export async function hasNetworkPolicy(namespace: string): Promise<boolean> {
   return res.body.items.length > 0;
 }
 
+export interface LiveEvent {
+  reason: string;
+  message: string;
+  type: string;
+  count: number;
+  involvedObject: string;
+  lastTimestamp: string | null;
+}
+
+// Namespace events (not just for one Deployment) — the FailedScheduling
+// event for a Pending pod is emitted against the Pod, not the Deployment,
+// so scoping by object name here would miss exactly the events incident
+// detection cares about most.
+export async function getRecentEvents(namespace: string): Promise<LiveEvent[]> {
+  const res = await coreApi.listNamespacedEvent(namespace);
+  return res.body.items
+    .slice()
+    .sort((a, b) => {
+      const ta = a.lastTimestamp ? new Date(a.lastTimestamp).getTime() : 0;
+      const tb = b.lastTimestamp ? new Date(b.lastTimestamp).getTime() : 0;
+      return tb - ta;
+    })
+    .slice(0, 20)
+    .map((e) => ({
+      reason: e.reason ?? 'Unknown',
+      message: e.message ?? '',
+      type: e.type ?? 'Normal',
+      count: e.count ?? 1,
+      involvedObject: e.involvedObject?.name ?? 'unknown',
+      lastTimestamp: e.lastTimestamp ? e.lastTimestamp.toISOString() : null,
+    }));
+}
+
 export async function getLivePods(namespace: string, appName: string): Promise<LivePodStatus[]> {
   const res = await coreApi.listNamespacedPod(
     namespace,

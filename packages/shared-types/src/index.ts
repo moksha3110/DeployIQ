@@ -159,6 +159,28 @@ export interface SecurityScore {
   findings: SecurityFinding[];
 }
 
+export type IncidentType =
+  | 'CRASH_LOOP_BACKOFF'
+  | 'IMAGE_PULL_ERROR'
+  | 'OOM_KILLED'
+  | 'PENDING_UNSCHEDULABLE'
+  | 'OTHER';
+export type IncidentPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type IncidentStatus = 'OPEN' | 'RESOLVED';
+
+export interface Incident {
+  id: string;
+  type: IncidentType;
+  status: IncidentStatus;
+  priority: IncidentPriority;
+  rootCause: string;
+  recommendedAction: string;
+  occurrenceCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  resolvedAt: string | null;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

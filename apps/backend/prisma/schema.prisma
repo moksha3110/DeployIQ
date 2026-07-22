@@ -46,6 +46,26 @@ enum DeploymentStage {
   DEPLOY
 }
 
+enum IncidentType {
+  CRASH_LOOP_BACKOFF
+  IMAGE_PULL_ERROR
+  OOM_KILLED
+  PENDING_UNSCHEDULABLE
+  OTHER
+}
+
+enum IncidentPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
 model User {
   id                  String   @id @default(uuid())
   githubId            String   @unique
@@ -131,9 +151,34 @@ model Deployment {
   logs        DeploymentLog[]
   aiAnalyses  AIAnalysis[]
   snapshots   DeploymentSnapshot[]
+  incidents   Incident[]
 
   @@index([repositoryId, createdAt])
   @@index([userId, status])
+}
+
+// One row per distinct ongoing problem, not one row per bad pod-status
+// observation — repeated detections of the same still-active problem
+// bump occurrenceCount/lastSeenAt on the existing OPEN row instead of
+// creating duplicates (see modules/analysis/incidents.ts). Closed out
+// automatically once the condition that triggered it clears.
+model Incident {
+  id           String     @id @default(uuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  type              IncidentType
+  status            IncidentStatus   @default(OPEN)
+  priority          IncidentPriority
+  rootCause         String
+  recommendedAction String
+  occurrenceCount   Int              @default(1)
+
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  @@index([deploymentId, status])
 }
 
 // Periodic point-in-time capture of a running deployment's health, taken by

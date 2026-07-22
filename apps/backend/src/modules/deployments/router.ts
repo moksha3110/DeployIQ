@@ -14,6 +14,7 @@ import { requireAuth } from '../auth/middleware.js';
 import { computeHealthScore, LiveResourceNotFoundError } from '../analysis/health-score.js';
 import { generateRecommendations } from '../analysis/recommend.js';
 import { computeSecurityScore } from '../analysis/security-score.js';
+import { scanIncidents } from '../analysis/incidents.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
 import { deployLimiter } from '../../common/rate-limit.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
@@ -289,6 +290,34 @@ deploymentsRouter.get('/:id/security', async (req, res, next) => {
       next(new HttpError(409, 'NOT_LIVE', err.message));
       return;
     }
+    next(err);
+  }
+});
+
+deploymentsRouter.get('/:id/incidents', async (req, res, next) => {
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    await scanIncidents(deployment.id, deployment.namespace!, APP_NAME);
+    const incidents = await prisma.incident.findMany({
+      where: { deploymentId: deployment.id },
+      orderBy: [{ status: 'asc' }, { lastSeenAt: 'desc' }],
+      take: 50,
+    });
+    res.json(
+      incidents.map((incident) => ({
+        id: incident.id,
+        type: incident.type,
+        status: incident.status,
+        priority: incident.priority,
+        rootCause: incident.rootCause,
+        recommendedAction: incident.recommendedAction,
+        occurrenceCount: incident.occurrenceCount,
+        firstSeenAt: incident.firstSeenAt.toISOString(),
+        lastSeenAt: incident.lastSeenAt.toISOString(),
+        resolvedAt: incident.resolvedAt ? incident.resolvedAt.toISOString() : null,
+      })),
+    );
+  } catch (err) {
     next(err);
   }
 });
