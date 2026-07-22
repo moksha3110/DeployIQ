@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { DeploymentSummary, PaginatedResult } from '@platform/shared-types';
 import { decrypt } from '../../common/crypto.js';
 import { HttpError } from '../../common/errors.js';
+import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { requireAuth } from '../auth/middleware.js';
 import { fetchBranchCommitSha, fetchRepository } from '../github/client.js';
@@ -184,13 +185,18 @@ deploymentsRouter.get('/:id/logs', async (req, res, next) => {
     }
 
     const subscriber = redisPublisher.duplicate();
+    // ioredis emits 'error' on a closed/closing connection (e.g. the client
+    // disconnecting mid-teardown below) — without a listener, that's an
+    // unhandled EventEmitter error and takes the whole process down.
+    subscriber.on('error', (err) =>
+      logger.error('log subscriber error', { deploymentId: deployment.id, err }),
+    );
     await subscriber.subscribe(deploymentLogChannel(deployment.id));
     subscriber.on('message', (_channel: string, message: string) =>
       res.write(`data: ${message}\n\n`),
     );
 
     req.on('close', () => {
-      void subscriber.unsubscribe();
       subscriber.disconnect();
     });
   } catch (err) {

@@ -48,6 +48,17 @@ export function DeploymentDetail() {
             </span>
           </header>
 
+          {deployment.publicUrl && (
+            <a
+              href={deployment.publicUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              {deployment.publicUrl}
+            </a>
+          )}
+
           <div className="flex flex-col gap-2">
             <h2 className="text-sm font-medium text-slate-700">Build logs</h2>
             <pre className="h-96 overflow-y-auto rounded-lg bg-slate-950 p-4 text-xs text-slate-100">

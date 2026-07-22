@@ -14,6 +14,7 @@
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@kubernetes/client-node": "^0.22.1",
     "@platform/shared-types": "*",
     "@prisma/client": "^5.19.1",
     "bullmq": "^5.13.2",

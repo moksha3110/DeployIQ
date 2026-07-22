@@ -26,6 +26,11 @@ metadata:
 | `Ingress`                 | Public routing, host `<repo-slug>-<short-id>.<platform-domain>`.     |
 | `HorizontalPodAutoscaler` | CPU-based autoscaling, min/max replicas.                             |
 
+`ConfigMap`/`Secret` aren't generated yet — they depend on the repo env-var
+management endpoints (`PUT /repos/:id/env` in [API.md](./API.md)), which
+haven't been built. Deployed apps currently get no env vars beyond what's
+baked into the image. Tracked as a gap, not silently skipped.
+
 ## Example: generated Deployment
 
 ```yaml
@@ -59,20 +64,29 @@ spec:
             requests: { cpu: '100m', memory: '128Mi' }
             limits: { cpu: '500m', memory: '512Mi' }
           readinessProbe:
-            httpGet: { path: /, port: 3000 }
+            tcpSocket: { port: 3000 }
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /, port: 3000 }
+            tcpSocket: { port: 3000 }
             initialDelaySeconds: 15
             periodSeconds: 10
 ```
 
-`containerPort` and probe path are detected per-project-type (Milestone 3);
-default `3000`/`/` with an override via a `platform.yaml` file at the repo
-root if present, falling back to the default if the app doesn't respond on
-`/` within the probe window (documented as a known limitation, not silently
-"fixed" with a longer timeout).
+**Implemented as `tcpSocket`, not `httpGet`** (a deliberate change from the
+original plan below): we don't know what path an arbitrary repo's app
+actually serves on, or whether it returns a 2xx there — an API-only service
+with no `/` route would fail an `httpGet` probe while being perfectly
+healthy. A TCP-level check is the honest floor of what auto-detection can
+promise without per-repo configuration (a `platform.yaml` override, listed
+as a stretch goal, is the real fix for apps where "the port accepts a
+connection" isn't good enough evidence of health).
+
+`containerPort` is detected in the Build stage (Milestone 3): parsed from
+the repo's own `Dockerfile` `EXPOSE` line when one exists, falling back to
+`3000` (`80` for the static/nginx template) when it doesn't, and persisted
+on the `Deployment` row so the Kubernetes Service doesn't need the
+(already-deleted) build workspace to know it.
 
 ## Example: generated HPA
 
@@ -125,14 +139,42 @@ spec:
 
 ## Rollout verification
 
-After `apply`, the Kubernetes Service watches the `Deployment`'s status
-conditions (via the Kubernetes watch API, not polling in a loop) until either:
+After `apply`, the Kubernetes Service watches the `Deployment` until either:
 
-- `availableReplicas == spec.replicas` and the newest `ReplicaSet` is fully
-  rolled out → mark `RUNNING`.
-- A timeout (default 3 minutes) or a pod enters `CrashLoopBackOff` → mark
-  `DEPLOY_FAILED`, capture the last N container log lines + pod events, hand
-  off to the AI Analysis Service.
+- `availableReplicas >= spec.replicas` → mark `RUNNING`.
+- A pod enters `CrashLoopBackOff`/`ImagePullBackOff`, or a 3-minute timeout
+  elapses → mark `DEPLOY_FAILED`. Capturing container logs + pod events for
+  the AI Analysis Service is Milestone 6's job, not this one's — for now the
+  crash reason string is logged and shown in the UI, which is enough to
+  debug by hand.
+
+**Implemented as polling** (`readNamespacedDeployment` every 2s), not a
+Kubernetes watch: simpler to reason about for a bounded, one-shot check, at
+the cost of a little latency. Worth revisiting if this ever needs to track
+many concurrent rollouts efficiently — a watch scales better than N pollers.
+
+## Local access: `kubectl port-forward`, not the Ingress
+
+The `Ingress` above is generated and applied for architectural parity with
+a production cluster, but making its host actually resolve on a developer's
+machine would require an OS hosts-file entry we have no business editing
+automatically. The URL actually shown in the UI comes from a `kubectl
+port-forward` process the Kubernetes Service spawns against the `Service`
+after a healthy rollout — works identically on Minikube or any other
+cluster reachable via kubeconfig, no DNS required. Known limitation: the
+port-forward process lives only as long as the worker process does: a
+worker restart drops it silently until the next redeploy. Reconciling
+port-forwards on worker startup is a reasonable follow-up, not done yet.
+
+## Local images: `minikube image load`
+
+When no registry is configured (see `ImageRegistry` in
+[ARCHITECTURE.md](./ARCHITECTURE.md)), the image built on the host's Docker
+daemon isn't visible to Minikube's own container runtime — they're separate
+Docker instances. The Kubernetes Service runs `minikube image load <tag>`
+before applying manifests in that case, and sets `imagePullPolicy: Never`
+so the kubelet doesn't try (and fail) to pull from a registry that was
+never pushed to.
 
 ## Isolation notes (explicitly out of scope for MVP, called out for interviews)
 

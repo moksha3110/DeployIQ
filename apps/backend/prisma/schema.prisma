@@ -113,9 +113,14 @@ model Deployment {
   status     DeploymentStatus @default(PENDING)
   triggeredBy TriggerSource   @default(MANUAL)
 
-  imageTag   String?
-  namespace  String?
-  publicUrl  String?
+  imageTag      String?
+  // Set by the Build stage from the detected project type (3000 for
+  // Node/Python/Go, 80 for static/nginx) — read back by the Kubernetes
+  // Service so it doesn't have to re-run detection against the workspace,
+  // which no longer exists by the time Deploy runs.
+  containerPort Int      @default(3000)
+  namespace     String?
+  publicUrl     String?
 
   // Denormalized pointer to the deployment this one superseded, for rollback.
   previousDeploymentId String?

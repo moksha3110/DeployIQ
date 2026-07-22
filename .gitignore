@@ -11,3 +11,4 @@ Thumbs.db
 .idea/
 *.tsbuildinfo
 generated/
+.claude/scheduled_tasks.lock
