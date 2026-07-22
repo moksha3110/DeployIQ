@@ -1,0 +1,162 @@
+// Data model for the deployment platform.
+// Design notes are in docs/ARCHITECTURE.md and docs/API.md.
+// This file defines structure only — implementation (migrations, generated
+// client usage) lands in Milestone 0.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DeploymentStatus {
+  PENDING
+  CLONING
+  BUILDING
+  BUILD_FAILED
+  PUSHING
+  DEPLOYING
+  RUNNING
+  DEPLOY_FAILED
+  STOPPED
+}
+
+enum TriggerSource {
+  MANUAL
+  WEBHOOK
+  REDEPLOY
+  ROLLBACK
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum DeploymentStage {
+  CLONE
+  DETECT
+  BUILD
+  PUSH
+  DEPLOY
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  githubId            String   @unique
+  username            String
+  avatarUrl           String?
+  email               String?
+  // Encrypted at rest (AES-256-GCM); never returned by any API response.
+  accessTokenEncrypted String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  repositories Repository[]
+  deployments  Deployment[]
+}
+
+model Repository {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  githubRepoId   String   @unique
+  name           String
+  fullName       String
+  defaultBranch  String
+  isPrivate      Boolean  @default(false)
+
+  // Set once auto-deploy-on-push is enabled for this repo.
+  webhookId      String?
+  webhookSecret  String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  deployments  Deployment[]
+  envVariables EnvironmentVariable[]
+
+  @@index([userId])
+}
+
+model EnvironmentVariable {
+  id           String     @id @default(uuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  key             String
+  // Encrypted at rest; decrypted only when materializing a K8s Secret.
+  valueEncrypted  String
+  isSecret        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([repositoryId, key])
+}
+
+model Deployment {
+  id           String     @id @default(uuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  branch     String
+  commitSha  String
+  status     DeploymentStatus @default(PENDING)
+  triggeredBy TriggerSource   @default(MANUAL)
+
+  imageTag   String?
+  namespace  String?
+  publicUrl  String?
+
+  // Denormalized pointer to the deployment this one superseded, for rollback.
+  previousDeploymentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs        DeploymentLog[]
+  aiAnalyses  AIAnalysis[]
+
+  @@index([repositoryId, createdAt])
+  @@index([userId, status])
+}
+
+// MVP log persistence. Superseded by Loki-backed streaming in a later
+// milestone; kept minimal (append-only, no full-text search) on purpose.
+model DeploymentLog {
+  id           String          @id @default(uuid())
+  deploymentId String
+  deployment   Deployment      @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  stage     DeploymentStage
+  level     LogLevel
+  message   String
+  timestamp DateTime @default(now())
+
+  @@index([deploymentId, timestamp])
+}
+
+model AIAnalysis {
+  id           String     @id @default(uuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  rootCause        String
+  suggestedFixes   Json
+  likelyConfigIssue String?
+  confidence       Float
+  rawModelResponse Json
+
+  createdAt DateTime @default(now())
+
+  @@index([deploymentId])
+}
