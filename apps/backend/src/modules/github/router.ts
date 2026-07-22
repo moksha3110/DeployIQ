@@ -124,8 +124,11 @@ async function upsertRepository(userId: string, accessToken: string, githubRepoI
 
 githubRouter.get('/:id/auto-deploy', async (req, res, next) => {
   try {
-    const repository = await prisma.repository.findUnique({
-      where: { githubRepoId: req.params.id! },
+    // Scoped by userId, not just githubRepoId — otherwise any authenticated
+    // user could probe whether auto-deploy is enabled on an arbitrary repo
+    // (including ones they have no GitHub access to) just by guessing IDs.
+    const repository = await prisma.repository.findFirst({
+      where: { githubRepoId: req.params.id!, userId: req.userId! },
     });
     res.json({ enabled: !!repository?.webhookId });
   } catch (err) {
@@ -164,8 +167,8 @@ githubRouter.post('/:id/auto-deploy', async (req, res, next) => {
 
 githubRouter.delete('/:id/auto-deploy', async (req, res, next) => {
   try {
-    const repository = await prisma.repository.findUnique({
-      where: { githubRepoId: req.params.id! },
+    const repository = await prisma.repository.findFirst({
+      where: { githubRepoId: req.params.id!, userId: req.userId! },
     });
     if (!repository?.webhookId) {
       res.json({ enabled: false });

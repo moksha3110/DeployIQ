@@ -13,6 +13,7 @@ import { generateDockerfile } from './dockerfile-templates.js';
 import { buildImage } from './docker.js';
 import { cloneRepository, GitCloneError } from './git.js';
 import { getRegistry } from './registry.js';
+import { scanImage } from './scan.js';
 
 function slugify(fullName: string): string {
   return fullName.toLowerCase().replaceAll('/', '-');
@@ -77,6 +78,36 @@ export async function runBuildPipeline(deploymentId: string): Promise<void> {
       tag: imageTag,
       onLog: (line) => void log('BUILD', 'INFO', line),
     });
+
+    await log('BUILD', 'INFO', 'Scanning image for known vulnerabilities (Trivy)...');
+    const scan = await scanImage(imageTag);
+    if (scan.scanFailed) {
+      await log(
+        'BUILD',
+        'INFO',
+        'Vulnerability scan did not complete — skipping, not blocking the deploy.',
+      );
+    } else if (scan.vulnerabilities.length === 0) {
+      await log('BUILD', 'INFO', 'No HIGH/CRITICAL vulnerabilities found.');
+    } else {
+      const critical = scan.vulnerabilities.filter((v) => v.severity === 'CRITICAL').length;
+      const high = scan.vulnerabilities.length - critical;
+      await log(
+        'BUILD',
+        'WARN',
+        `Found ${critical} CRITICAL and ${high} HIGH vulnerabilities (not blocking — informational only):`,
+      );
+      for (const v of scan.vulnerabilities.slice(0, 20)) {
+        await log(
+          'BUILD',
+          'WARN',
+          `  ${v.severity} ${v.id} — ${v.pkgName}@${v.installedVersion}${v.fixedVersion ? ` (fixed in ${v.fixedVersion})` : ' (no fix available)'}`,
+        );
+      }
+      if (scan.vulnerabilities.length > 20) {
+        await log('BUILD', 'WARN', `  ...and ${scan.vulnerabilities.length - 20} more`);
+      }
+    }
 
     await prisma.deployment.update({
       where: { id: deploymentId },

@@ -5,6 +5,7 @@ import type { UserProfile } from '@platform/shared-types';
 import { env } from '../../config/env.js';
 import { encrypt } from '../../common/crypto.js';
 import { logger } from '../../common/logger.js';
+import { authLimiter } from '../../common/rate-limit.js';
 import { prisma } from '../../prisma/client.js';
 import { buildAuthorizeUrl, exchangeCodeForToken, fetchGithubUser } from './github-oauth.js';
 import { requireAuth } from './middleware.js';
@@ -15,7 +16,7 @@ export const authRouter = Router();
 const OAUTH_STATE_COOKIE = 'oauth_state';
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
-authRouter.get('/github', (_req, res) => {
+authRouter.get('/github', authLimiter, (_req, res) => {
   const state = randomBytes(16).toString('hex');
   res.cookie(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
@@ -32,7 +33,7 @@ const callbackQuerySchema = z.object({
   state: z.string().min(1),
 });
 
-authRouter.get('/github/callback', async (req, res) => {
+authRouter.get('/github/callback', authLimiter, async (req, res) => {
   const expectedState = req.cookies?.[OAUTH_STATE_COOKIE];
   res.clearCookie(OAUTH_STATE_COOKIE, { path: '/' });
 

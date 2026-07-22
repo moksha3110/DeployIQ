@@ -25,3 +25,11 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+
+      # Informational only (see docs/SECURITY.md) — dependency vulnerabilities
+      # are surfaced in CI output, not a merge gate. `|| true` because `npm
+      # audit` exits non-zero the moment it finds anything, which would turn
+      # every dependency bump into a failing build for issues we may not be
+      # able to fix immediately (transitive deps, no patch released yet).
+      - name: Dependency audit (informational)
+        run: npm audit --audit-level=high || true

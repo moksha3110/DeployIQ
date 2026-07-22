@@ -21,6 +21,7 @@ progress.
 - [Architecture](docs/ARCHITECTURE.md) — components, tech choices, diagrams, data flow
 - [API design](docs/API.md) — REST endpoints
 - [Kubernetes design](docs/KUBERNETES.md) — generated manifests, namespacing, rollout verification
+- [Security posture](docs/SECURITY.md) — secrets, auth, injection, rate limiting, scanning, explicit gaps
 - [Milestones](docs/MILESTONES.md) — build order and current status
 
 ## Structure

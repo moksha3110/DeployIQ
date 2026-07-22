@@ -11,6 +11,7 @@ import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { requireAuth } from '../auth/middleware.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
+import { deployLimiter } from '../../common/rate-limit.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
 import { deploymentLogChannel, redisPublisher } from '../../queues/pubsub.js';
 import { createDeploymentForUser } from './create.js';
@@ -50,7 +51,7 @@ const createSchema = z.object({
   branch: z.string().min(1),
 });
 
-deploymentsRouter.post('/', async (req, res, next) => {
+deploymentsRouter.post('/', deployLimiter, async (req, res, next) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     next(new HttpError(400, 'INVALID_BODY', 'Invalid request body', parsed.error.flatten()));
@@ -129,7 +130,7 @@ deploymentsRouter.get('/:id', async (req, res, next) => {
   }
 });
 
-deploymentsRouter.post('/:id/rollback', async (req, res, next) => {
+deploymentsRouter.post('/:id/rollback', deployLimiter, async (req, res, next) => {
   try {
     const id = req.params.id;
     if (!id) {
