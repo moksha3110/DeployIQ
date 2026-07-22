@@ -40,4 +40,29 @@ docs/            Architecture, API, and milestone docs
 
 ## Local development
 
-Setup instructions land in Milestone 0.
+Requires Node 22+ and Docker Desktop.
+
+```bash
+npm install
+
+# Postgres + Redis
+docker compose -f infra/docker/docker-compose.yml up -d
+
+# Copy env files and fill in secrets as milestones require them
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
+
+# Apply the schema
+npm run prisma:migrate --workspace apps/backend
+
+# Terminal 1
+npm run dev:backend
+# Terminal 2
+npm run dev:frontend
+```
+
+Backend on `http://localhost:4000`, frontend on `http://localhost:5173`. The
+dashboard's scaffolding check should show `backend ok`.
+
+`npm run lint` / `npm run typecheck` / `npm run build` run across all
+workspaces and are what CI checks on every push.

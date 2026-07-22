@@ -48,6 +48,7 @@ config.
 ## Format for each milestone
 
 When we do a milestone, you get, in order:
+
 1. **Explanation** — what we're building and why it's scoped this way.
 2. **Architecture decisions** — anything milestone-specific not already in
    `ARCHITECTURE.md`.

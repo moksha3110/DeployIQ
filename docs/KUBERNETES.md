@@ -9,22 +9,22 @@ Namespaces are labeled for traceability and cleanup:
 ```yaml
 metadata:
   labels:
-    platform.dev/repository-id: "<repositoryId>"
-    platform.dev/deployment-id: "<deploymentId>"
-    platform.dev/user-id: "<userId>"
+    platform.dev/repository-id: '<repositoryId>'
+    platform.dev/deployment-id: '<deploymentId>'
+    platform.dev/user-id: '<userId>'
 ```
 
 ## Resources generated per deployment
 
-| Resource | Purpose |
-|---|---|
-| `Namespace` | Isolation boundary + cleanup unit. |
-| `ConfigMap` | Non-secret env vars. |
-| `Secret` | Secret env vars, decrypted from Postgres just-in-time, never logged. |
-| `Deployment` | The workload: image, replicas, resource requests/limits, probes. |
-| `Service` | Stable `ClusterIP` in front of the pods. |
-| `Ingress` | Public routing, host `<repo-slug>-<short-id>.<platform-domain>`. |
-| `HorizontalPodAutoscaler` | CPU-based autoscaling, min/max replicas. |
+| Resource                  | Purpose                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `Namespace`               | Isolation boundary + cleanup unit.                                   |
+| `ConfigMap`               | Non-secret env vars.                                                 |
+| `Secret`                  | Secret env vars, decrypted from Postgres just-in-time, never logged. |
+| `Deployment`              | The workload: image, replicas, resource requests/limits, probes.     |
+| `Service`                 | Stable `ClusterIP` in front of the pods.                             |
+| `Ingress`                 | Public routing, host `<repo-slug>-<short-id>.<platform-domain>`.     |
+| `HorizontalPodAutoscaler` | CPU-based autoscaling, min/max replicas.                             |
 
 ## Example: generated Deployment
 
@@ -56,8 +56,8 @@ spec:
             - configMapRef: { name: app-config }
             - secretRef: { name: app-secrets }
           resources:
-            requests: { cpu: "100m", memory: "128Mi" }
-            limits:   { cpu: "500m", memory: "512Mi" }
+            requests: { cpu: '100m', memory: '128Mi' }
+            limits: { cpu: '500m', memory: '512Mi' }
           readinessProbe:
             httpGet: { path: /, port: 3000 }
             initialDelaySeconds: 5
@@ -107,7 +107,7 @@ metadata:
   name: app
   namespace: deploy-a1b2c3d4
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false" # local/minikube
+    nginx.ingress.kubernetes.io/ssl-redirect: 'false' # local/minikube
 spec:
   ingressClassName: nginx
   rules:
@@ -127,6 +127,7 @@ spec:
 
 After `apply`, the Kubernetes Service watches the `Deployment`'s status
 conditions (via the Kubernetes watch API, not polling in a loop) until either:
+
 - `availableReplicas == spec.replicas` and the newest `ReplicaSet` is fully
   rolled out → mark `RUNNING`.
 - A timeout (default 3 minutes) or a pod enters `CrashLoopBackOff` → mark
