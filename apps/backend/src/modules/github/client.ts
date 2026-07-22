@@ -20,13 +20,39 @@ function headers(accessToken: string) {
   };
 }
 
-async function githubFetch(path: string, accessToken: string): Promise<Response> {
-  const res = await fetch(`https://api.github.com${path}`, { headers: headers(accessToken) });
+async function githubFetch(
+  path: string,
+  accessToken: string,
+  init?: { method?: string; body?: unknown },
+): Promise<Response> {
+  const res = await fetch(`https://api.github.com${path}`, {
+    method: init?.method ?? 'GET',
+    headers: {
+      ...headers(accessToken),
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(init?.body ? { body: JSON.stringify(init.body) } : {}),
+  });
   if (res.status === 401 || res.status === 403) {
     throw new GithubApiError(res.status, 'GitHub rejected the stored access token');
   }
   if (!res.ok) {
-    throw new GithubApiError(res.status, `GitHub API error: ${res.statusText}`);
+    // GitHub's error bodies (esp. 422 validation errors) carry the actual
+    // useful detail one level deeper than `message` — a 422's top-level
+    // message is just "Validation Failed"; the real reason (e.g. "url is
+    // not supported because it isn't reachable over the public Internet
+    // (localhost)") is in `errors[].message`. Skipping that turns a
+    // diagnosable failure into "something went wrong."
+    const body = (await res.json().catch(() => null)) as {
+      message?: string;
+      errors?: Array<{ message?: string }>;
+    } | null;
+    const nested = body?.errors
+      ?.map((e) => e.message)
+      .filter(Boolean)
+      .join('; ');
+    const detail = nested || body?.message || res.statusText;
+    throw new GithubApiError(res.status, `GitHub API error: ${detail}`);
   }
   return res;
 }
@@ -111,4 +137,35 @@ export async function fetchBranchCommitSha(
   );
   const body = (await res.json()) as GithubBranchDetailResponse;
   return body.commit.sha;
+}
+
+interface GithubWebhookResponse {
+  id: number;
+}
+
+export async function createWebhook(
+  accessToken: string,
+  fullName: string,
+  payloadUrl: string,
+  secret: string,
+): Promise<string> {
+  const res = await githubFetch(`/repos/${fullName}/hooks`, accessToken, {
+    method: 'POST',
+    body: {
+      name: 'web',
+      active: true,
+      events: ['push'],
+      config: { url: payloadUrl, content_type: 'json', secret, insecure_ssl: '0' },
+    },
+  });
+  const body = (await res.json()) as GithubWebhookResponse;
+  return String(body.id);
+}
+
+export async function deleteWebhook(
+  accessToken: string,
+  fullName: string,
+  webhookId: string,
+): Promise<void> {
+  await githubFetch(`/repos/${fullName}/hooks/${webhookId}`, accessToken, { method: 'DELETE' });
 }

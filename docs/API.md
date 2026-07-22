@@ -15,27 +15,28 @@ JWT cookie set by the OAuth callback). Responses are JSON; errors follow
 
 ## Repositories
 
-| Method | Path                     | Description                                                                                |
-| ------ | ------------------------ | ------------------------------------------------------------------------------------------ |
-| GET    | `/repos`                 | List the user's GitHub repos (paginated, `?search=&page=`). Proxies + caches GitHub's API. |
-| GET    | `/repos/:id/branches`    | List branches for a repo.                                                                  |
-| POST   | `/repos/:id/auto-deploy` | Enable auto-deploy: registers a GitHub webhook, persists `webhookId`/`webhookSecret`.      |
-| DELETE | `/repos/:id/auto-deploy` | Disable auto-deploy: removes the webhook.                                                  |
-| GET    | `/repos/:id/env`         | List env vars for a repo (values redacted if `isSecret`).                                  |
-| PUT    | `/repos/:id/env`         | Replace env vars (upsert set), encrypted at rest.                                          |
+| Method | Path                     | Description                                                                                                                             |
+| ------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/repos`                 | List the user's GitHub repos (paginated, `?search=&page=`). Proxies + caches GitHub's API.                                              |
+| GET    | `/repos/:id/branches`    | List branches for a repo.                                                                                                               |
+| GET    | `/repos/:id/auto-deploy` | `{ enabled: boolean }` — whether a webhook is currently registered.                                                                     |
+| POST   | `/repos/:id/auto-deploy` | Enable auto-deploy: registers a GitHub webhook, persists `webhookId`/encrypted `webhookSecret`. Tracks the repo's `defaultBranch` only. |
+| DELETE | `/repos/:id/auto-deploy` | Disable auto-deploy: removes the webhook, clears the stored secret.                                                                     |
+
+`GET`/`PUT /repos/:id/env` (env var management) aren't implemented — deployed apps get no env vars beyond what's baked into the image (see [KUBERNETES.md](./KUBERNETES.md)).
 
 ## Deployments
 
-| Method | Path                        | Description                                                                                                                            |
-| ------ | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/deployments`              | Body: `{ repositoryId, branch }`. Creates a `Deployment` (status `PENDING`), enqueues a build job. Returns `202` + `{ deploymentId }`. |
-| GET    | `/deployments`              | List deployments for the user (`?repositoryId=&status=&page=`).                                                                        |
-| GET    | `/deployments/:id`          | Full deployment detail: status, imageTag, publicUrl, latest AI analysis if any.                                                        |
-| GET    | `/deployments/:id/logs`     | **SSE** stream of build/deploy log lines, live during BUILDING/DEPLOYING, replays persisted lines first if reconnecting.               |
-| POST   | `/deployments/:id/redeploy` | Re-run the pipeline for the same commit (or `{ branch }` to redeploy latest of a branch).                                              |
-| POST   | `/deployments/:id/rollback` | Roll the repo's live deployment back to this (previously RUNNING) deployment's image.                                                  |
-| DELETE | `/deployments/:id`          | Tear down the K8s namespace and mark `STOPPED`.                                                                                        |
-| GET    | `/deployments/:id/analysis` | Latest `AIAnalysis` for a failed deployment (`404` if none / not failed).                                                              |
+| Method | Path                        | Description                                                                                                                                                                               |
+| ------ | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/deployments`              | Body: `{ repositoryId, branch }` (`repositoryId` is the GitHub repo id — see `RepositorySummary.id`). Creates a `Deployment`, enqueues a build job. `202` + `{ deploymentId }`.           |
+| GET    | `/deployments`              | List deployments for the user (`?githubRepoId=&page=&pageSize=`) — deployment history for a repo.                                                                                         |
+| GET    | `/deployments/:id`          | Full deployment detail: status, imageTag, publicUrl, latest AI analysis if any.                                                                                                           |
+| GET    | `/deployments/:id/logs`     | **SSE** stream of build/deploy log lines, live during BUILDING/DEPLOYING, replays persisted lines first if reconnecting.                                                                  |
+| POST   | `/deployments/:id/rollback` | Re-deploy a prior successful build's image under a _new_ `Deployment` row (`triggeredBy=ROLLBACK`) — skips clone/build, goes straight to the deploy queue since the image already exists. |
+| GET    | `/deployments/:id/analysis` | Latest `AIAnalysis` for a failed deployment (`404` if none / not failed).                                                                                                                 |
+
+No separate `/redeploy` endpoint — re-`POST /deployments` with the same repo/branch does that (fetches the branch's current HEAD, which is exactly what "redeploy" means for a moving branch). `DELETE /deployments/:id` (namespace teardown) isn't implemented yet — deployments accumulate namespaces until manually cleaned up; a real gap, not hidden.
 
 ## Monitoring
 
@@ -49,6 +50,8 @@ JWT cookie set by the OAuth callback). Responses are JSON; errors follow
 | Method | Path               | Description                                                                                                                                                                        |
 | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | POST   | `/webhooks/github` | Public (no session). Verifies `X-Hub-Signature-256` against the repo's stored `webhookSecret`. On `push` to the tracked branch, creates a `Deployment` with `triggeredBy=WEBHOOK`. |
+
+**`PUBLIC_WEBHOOK_URL` must be a real public URL for `POST /repos/:id/auto-deploy` to work at all** — confirmed against GitHub's real API, not assumed: with it left at the `localhost` default, GitHub's webhook-creation endpoint rejects the request outright (`422`, `"url is not supported because it isn't reachable over the public Internet (localhost)"`) before a webhook is ever created. Local dev needs a tunnel (ngrok, localtunnel, Cloudflare Tunnel) pointed at the backend, with `PUBLIC_WEBHOOK_URL` set to that tunnel's URL. The delivery-handling logic itself (`POST /webhooks/github` — signature verification, push parsing, dedup) has no such dependency and is fully testable locally by POSTing a correctly-signed payload directly, which is how it was verified here.
 
 ## Conventions
 

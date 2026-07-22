@@ -9,7 +9,13 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
   FRONTEND_ORIGIN: z.string().url().default('http://localhost:5173'),
+  // Fixed forever by what's registered in the GitHub OAuth App's callback
+  // URL — never point this at a tunnel.
   BACKEND_URL: z.string().url().default('http://localhost:4000'),
+  // Where GitHub is told to POST push events. Separate from BACKEND_URL
+  // because this one *does* need to change — to a tunnel URL — for GitHub's
+  // servers to reach a machine that's normally just localhost.
+  PUBLIC_WEBHOOK_URL: z.string().url().default('http://localhost:4000'),
 
   GITHUB_CLIENT_ID: z.string().min(1, 'GITHUB_CLIENT_ID is required'),
   GITHUB_CLIENT_SECRET: z.string().min(1, 'GITHUB_CLIENT_SECRET is required'),

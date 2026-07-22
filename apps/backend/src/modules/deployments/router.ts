@@ -6,15 +6,14 @@ import type {
   DeploymentSummary,
   PaginatedResult,
 } from '@platform/shared-types';
-import { decrypt } from '../../common/crypto.js';
 import { HttpError } from '../../common/errors.js';
 import { logger } from '../../common/logger.js';
 import { prisma } from '../../prisma/client.js';
 import { requireAuth } from '../auth/middleware.js';
-import { fetchBranchCommitSha, fetchRepository } from '../github/client.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
-import { enqueueBuildJob } from '../../queues/build-queue.js';
+import { enqueueDeployJob } from '../../queues/deploy-queue.js';
 import { deploymentLogChannel, redisPublisher } from '../../queues/pubsub.js';
+import { createDeploymentForUser } from './create.js';
 import type { LogLine } from './log.js';
 
 export const deploymentsRouter = Router();
@@ -59,55 +58,22 @@ deploymentsRouter.post('/', async (req, res, next) => {
   }
 
   try {
-    const userId = req.userId!;
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    const accessToken = decrypt(user.accessTokenEncrypted);
-
-    const githubRepo = await fetchRepository(accessToken, parsed.data.repositoryId);
-    const commitSha = await fetchBranchCommitSha(
-      accessToken,
-      githubRepo.fullName,
-      parsed.data.branch,
-    );
-
-    const repository = await prisma.repository.upsert({
-      where: { githubRepoId: githubRepo.id },
-      create: {
-        githubRepoId: githubRepo.id,
-        userId,
-        name: githubRepo.name,
-        fullName: githubRepo.fullName,
-        defaultBranch: githubRepo.defaultBranch,
-        isPrivate: githubRepo.isPrivate,
-      },
-      update: {
-        name: githubRepo.name,
-        fullName: githubRepo.fullName,
-        defaultBranch: githubRepo.defaultBranch,
-        isPrivate: githubRepo.isPrivate,
-      },
+    const deploymentId = await createDeploymentForUser({
+      userId: req.userId!,
+      githubRepoId: parsed.data.repositoryId,
+      branch: parsed.data.branch,
     });
-
-    const deployment = await prisma.deployment.create({
-      data: {
-        repositoryId: repository.id,
-        userId,
-        branch: parsed.data.branch,
-        commitSha,
-        status: 'PENDING',
-        triggeredBy: 'MANUAL',
-      },
-    });
-
-    await enqueueBuildJob(deployment.id);
-    res.status(202).json({ deploymentId: deployment.id });
+    res.status(202).json({ deploymentId });
   } catch (err) {
     next(err);
   }
 });
 
 const listQuerySchema = z.object({
-  repositoryId: z.string().optional(),
+  // The GitHub repo id (see RepositorySummary.id) — the frontend never
+  // learns our internal Repository.id, so this is the only identifier it
+  // can filter by. Resolved via the relation below.
+  githubRepoId: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(50).default(20),
 });
@@ -118,10 +84,13 @@ deploymentsRouter.get('/', async (req, res, next) => {
     next(new HttpError(400, 'INVALID_QUERY', 'Invalid query parameters', parsed.error.flatten()));
     return;
   }
-  const { repositoryId, page, pageSize } = parsed.data;
+  const { githubRepoId, page, pageSize } = parsed.data;
 
   try {
-    const where = { userId: req.userId!, ...(repositoryId ? { repositoryId } : {}) };
+    const where = {
+      userId: req.userId!,
+      ...(githubRepoId ? { repository: { githubRepoId } } : {}),
+    };
     const [items, total] = await Promise.all([
       prisma.deployment.findMany({
         where,
@@ -155,6 +124,50 @@ deploymentsRouter.get('/:id', async (req, res, next) => {
       return;
     }
     res.json({ ...toSummary(deployment), repositoryFullName: deployment.repository.fullName });
+  } catch (err) {
+    next(err);
+  }
+});
+
+deploymentsRouter.post('/:id/rollback', async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      next(new HttpError(400, 'INVALID_PARAMS', 'Missing deployment id'));
+      return;
+    }
+    const target = await prisma.deployment.findFirst({ where: { id, userId: req.userId! } });
+    if (!target) {
+      next(new HttpError(404, 'NOT_FOUND', 'Deployment not found'));
+      return;
+    }
+    if (!target.imageTag) {
+      next(
+        new HttpError(
+          409,
+          'NO_IMAGE',
+          'This deployment never finished a build — nothing to roll back to',
+        ),
+      );
+      return;
+    }
+
+    // The image already exists (built and, if configured, pushed) — skip
+    // straight to the deploy stage rather than re-running clone/build.
+    const rollbackDeployment = await prisma.deployment.create({
+      data: {
+        repositoryId: target.repositoryId,
+        userId: req.userId!,
+        branch: target.branch,
+        commitSha: target.commitSha,
+        imageTag: target.imageTag,
+        containerPort: target.containerPort,
+        status: 'PUSHING',
+        triggeredBy: 'ROLLBACK',
+      },
+    });
+    await enqueueDeployJob(rollbackDeployment.id);
+    res.status(202).json({ deploymentId: rollbackDeployment.id });
   } catch (err) {
     next(err);
   }

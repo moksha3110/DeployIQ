@@ -8,8 +8,15 @@ import { errorHandler, notFoundHandler } from './common/errors.js';
 import { authRouter } from './modules/auth/router.js';
 import { githubRouter } from './modules/github/router.js';
 import { deploymentsRouter } from './modules/deployments/router.js';
+import { webhooksRouter } from './modules/webhooks/router.js';
 
 const app = express();
+
+// Mounted before express.json(): GitHub webhook signature verification
+// needs the exact raw request bytes, which this router parses itself
+// (express.raw, scoped to just this route) — the global JSON parser below
+// would otherwise consume the body stream first.
+app.use('/api/webhooks', webhooksRouter);
 
 app.use(cors({ origin: env.FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json());

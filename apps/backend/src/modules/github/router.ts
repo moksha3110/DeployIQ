@@ -1,11 +1,20 @@
+import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { BranchSummary, PaginatedResult, RepositorySummary } from '@platform/shared-types';
-import { decrypt } from '../../common/crypto.js';
+import { decrypt, encrypt } from '../../common/crypto.js';
+import { env } from '../../config/env.js';
 import { HttpError } from '../../common/errors.js';
 import { prisma } from '../../prisma/client.js';
 import { requireAuth } from '../auth/middleware.js';
-import { fetchAllRepositories, fetchBranches, fetchRepository, GithubApiError } from './client.js';
+import {
+  createWebhook,
+  deleteWebhook,
+  fetchAllRepositories,
+  fetchBranches,
+  fetchRepository,
+  GithubApiError,
+} from './client.js';
 
 export const githubRouter = Router();
 githubRouter.use(requireAuth);
@@ -22,6 +31,13 @@ function mapGithubError(err: unknown): unknown {
       'GITHUB_TOKEN_INVALID',
       'GitHub access was revoked or expired — please sign out and sign in again.',
     );
+  }
+  // Any other GitHub rejection (e.g. 422 "url is not supported... isn't
+  // reachable over the public Internet (localhost)" when PUBLIC_WEBHOOK_URL
+  // still points at localhost) — surface GitHub's own message rather than
+  // falling through to a generic 500.
+  if (err instanceof GithubApiError) {
+    return new HttpError(502, 'GITHUB_REQUEST_FAILED', err.message);
   }
   return err;
 }
@@ -76,6 +92,94 @@ githubRouter.get('/:id/branches', async (req, res, next) => {
     const accessToken = await getAccessToken(req.userId!);
     const branches: BranchSummary[] = await fetchBranches(accessToken, req.params.id!);
     res.json(branches);
+  } catch (err) {
+    next(mapGithubError(err));
+  }
+});
+
+// Upserts our Repository row from live GitHub data — same lazy-persist
+// pattern as createDeploymentForUser, since enabling auto-deploy is another
+// place a repo can go from "just something in the GitHub list" to
+// "something we track."
+async function upsertRepository(userId: string, accessToken: string, githubRepoId: string) {
+  const githubRepo = await fetchRepository(accessToken, githubRepoId);
+  return prisma.repository.upsert({
+    where: { githubRepoId: githubRepo.id },
+    create: {
+      githubRepoId: githubRepo.id,
+      userId,
+      name: githubRepo.name,
+      fullName: githubRepo.fullName,
+      defaultBranch: githubRepo.defaultBranch,
+      isPrivate: githubRepo.isPrivate,
+    },
+    update: {
+      name: githubRepo.name,
+      fullName: githubRepo.fullName,
+      defaultBranch: githubRepo.defaultBranch,
+      isPrivate: githubRepo.isPrivate,
+    },
+  });
+}
+
+githubRouter.get('/:id/auto-deploy', async (req, res, next) => {
+  try {
+    const repository = await prisma.repository.findUnique({
+      where: { githubRepoId: req.params.id! },
+    });
+    res.json({ enabled: !!repository?.webhookId });
+  } catch (err) {
+    next(err);
+  }
+});
+
+githubRouter.post('/:id/auto-deploy', async (req, res, next) => {
+  try {
+    const accessToken = await getAccessToken(req.userId!);
+    const repository = await upsertRepository(req.userId!, accessToken, req.params.id!);
+
+    if (repository.webhookId) {
+      res.json({ enabled: true });
+      return;
+    }
+
+    const secret = randomBytes(32).toString('hex');
+    const webhookId = await createWebhook(
+      accessToken,
+      repository.fullName,
+      `${env.PUBLIC_WEBHOOK_URL}/api/webhooks/github`,
+      secret,
+    );
+
+    await prisma.repository.update({
+      where: { id: repository.id },
+      data: { webhookId, webhookSecret: encrypt(secret) },
+    });
+
+    res.json({ enabled: true });
+  } catch (err) {
+    next(mapGithubError(err));
+  }
+});
+
+githubRouter.delete('/:id/auto-deploy', async (req, res, next) => {
+  try {
+    const repository = await prisma.repository.findUnique({
+      where: { githubRepoId: req.params.id! },
+    });
+    if (!repository?.webhookId) {
+      res.json({ enabled: false });
+      return;
+    }
+
+    const accessToken = await getAccessToken(req.userId!);
+    await deleteWebhook(accessToken, repository.fullName, repository.webhookId);
+    await prisma.repository.update({
+      where: { id: repository.id },
+      data: { webhookId: null, webhookSecret: null },
+    });
+
+    res.json({ enabled: false });
   } catch (err) {
     next(mapGithubError(err));
   }

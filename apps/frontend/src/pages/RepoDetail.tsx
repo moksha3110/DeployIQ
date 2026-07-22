@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AutoDeployToggle } from '../components/AutoDeployToggle';
+import { DeploymentHistory } from '../components/DeploymentHistory';
 import { useCreateDeployment } from '../lib/deployments';
 import { useBranches, useRepo } from '../lib/repos';
 
@@ -85,6 +87,13 @@ export function RepoDetail() {
           {createDeployment.isError && (
             <p className="text-sm text-red-600">Couldn't start the deployment. Please try again.</p>
           )}
+
+          <AutoDeployToggle githubRepoId={repo.id} />
+
+          <div className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium text-slate-700">Deployment history</h2>
+            <DeploymentHistory githubRepoId={repo.id} />
+          </div>
         </>
       )}
     </main>

@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import type { DeploymentStatus, DeploymentSummary } from '@platform/shared-types';
+import type {
+  AutoDeployStatus,
+  DeploymentStatus,
+  DeploymentSummary,
+  PaginatedResult,
+} from '@platform/shared-types';
 import { API_BASE_URL, apiFetch } from './api';
 
 const TERMINAL_STATUSES: DeploymentStatus[] = [
@@ -72,4 +77,46 @@ export function useDeploymentLogs(id: string | undefined) {
   }, [id]);
 
   return lines;
+}
+
+export function useRepoDeployments(githubRepoId: string | undefined) {
+  return useQuery({
+    queryKey: ['deployments', githubRepoId],
+    queryFn: () =>
+      apiFetch<PaginatedResult<DeploymentSummary>>(
+        `/api/deployments?${new URLSearchParams({ githubRepoId: githubRepoId!, pageSize: '20' })}`,
+      ),
+    enabled: !!githubRepoId,
+  });
+}
+
+export function useRollback() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deploymentId: string) =>
+      apiFetch<{ deploymentId: string }>(`/api/deployments/${deploymentId}/rollback`, {
+        method: 'POST',
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deployments'] }),
+  });
+}
+
+export function useAutoDeployStatus(githubRepoId: string | undefined) {
+  return useQuery({
+    queryKey: ['auto-deploy', githubRepoId],
+    queryFn: () => apiFetch<AutoDeployStatus>(`/api/repos/${githubRepoId}/auto-deploy`),
+    enabled: !!githubRepoId,
+  });
+}
+
+export function useSetAutoDeploy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ githubRepoId, enable }: { githubRepoId: string; enable: boolean }) =>
+      apiFetch<AutoDeployStatus>(`/api/repos/${githubRepoId}/auto-deploy`, {
+        method: enable ? 'POST' : 'DELETE',
+      }),
+    onSuccess: (_data, { githubRepoId }) =>
+      queryClient.invalidateQueries({ queryKey: ['auto-deploy', githubRepoId] }),
+  });
 }

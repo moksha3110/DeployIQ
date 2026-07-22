@@ -95,6 +95,10 @@ export interface DeploymentAnalysis {
   createdAt: string;
 }
 
+export interface AutoDeployStatus {
+  enabled: boolean;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;
