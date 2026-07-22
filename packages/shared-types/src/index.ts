@@ -30,11 +30,28 @@ export interface UserProfile {
 }
 
 export interface RepositorySummary {
+  // The GitHub repo id (not yet a Repository row in our DB — we don't
+  // persist one until Milestone 3, when a deploy first references it).
   id: string;
   name: string;
   fullName: string;
+  description: string | null;
   defaultBranch: string;
   isPrivate: boolean;
+  htmlUrl: string;
+  updatedAt: string;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface BranchSummary {
+  name: string;
+  isDefault: boolean;
 }
 
 export interface DeploymentSummary {

@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import { RepoList } from '../components/RepoList';
 import { useCurrentUser, useLogout } from '../lib/auth';
 
-// Repo list, deploy button, and deployment history land in Milestone 2+.
+// Deploy button and deployment history land in Milestone 3+.
 export function Dashboard() {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
@@ -36,7 +37,10 @@ export function Dashboard() {
         </div>
       )}
 
-      <p className="text-slate-500">Repositories and deployments land in Milestone 2.</p>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium text-slate-900">Repositories</h2>
+        <RepoList />
+      </section>
     </main>
   );
 }
