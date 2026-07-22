@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { decrypt } from '../../common/crypto.js';
 import { logger } from '../../common/logger.js';
+import { analyzeFailure } from '../ai/analyze.js';
 import { appendLog } from '../deployments/log.js';
 import { prisma } from '../../prisma/client.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
@@ -102,6 +103,7 @@ export async function runBuildPipeline(deploymentId: string): Promise<void> {
       data: { status: 'BUILD_FAILED' },
     });
     logger.error('Build pipeline failed', { deploymentId, err });
+    await analyzeFailure(deploymentId, stage);
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }

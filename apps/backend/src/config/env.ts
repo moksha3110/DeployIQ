@@ -24,6 +24,14 @@ const envSchema = z.object({
   DOCKER_REGISTRY_USERNAME: z.string().optional(),
   DOCKER_REGISTRY_PASSWORD: z.string().optional(),
   DOCKER_REGISTRY: z.string().default('docker.io'),
+
+  // Optional — without it, failed deployments just skip AI diagnosis (see
+  // modules/ai/analyze.ts) instead of the whole pipeline erroring out.
+  // Haiku by default: this only runs on actual failures, not every
+  // request, but there's no reason to spend Sonnet-level cost on
+  // extracting a root cause from a log excerpt.
+  ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().default('claude-haiku-4-5-20251001'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -1,7 +1,11 @@
 import type { Request } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
-import type { DeploymentSummary, PaginatedResult } from '@platform/shared-types';
+import type {
+  DeploymentAnalysis,
+  DeploymentSummary,
+  PaginatedResult,
+} from '@platform/shared-types';
 import { decrypt } from '../../common/crypto.js';
 import { HttpError } from '../../common/errors.js';
 import { logger } from '../../common/logger.js';
@@ -191,6 +195,41 @@ deploymentsRouter.get('/:id/metrics/history', async (req, res, next) => {
     const deployment = await findDeploymentOrFail(req);
     const history = await getHistory(deployment.namespace!, parsed.data.range);
     res.json(history);
+  } catch (err) {
+    next(err);
+  }
+});
+
+deploymentsRouter.get('/:id/analysis', async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      next(new HttpError(400, 'INVALID_PARAMS', 'Missing deployment id'));
+      return;
+    }
+    const deployment = await prisma.deployment.findFirst({ where: { id, userId: req.userId! } });
+    if (!deployment) {
+      next(new HttpError(404, 'NOT_FOUND', 'Deployment not found'));
+      return;
+    }
+
+    const analysis = await prisma.aIAnalysis.findFirst({
+      where: { deploymentId: id },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!analysis) {
+      next(new HttpError(404, 'NOT_FOUND', 'No AI analysis for this deployment'));
+      return;
+    }
+
+    const body: DeploymentAnalysis = {
+      rootCause: analysis.rootCause,
+      suggestedFixes: analysis.suggestedFixes as string[],
+      likelyConfigIssue: analysis.likelyConfigIssue,
+      confidence: analysis.confidence,
+      createdAt: analysis.createdAt.toISOString(),
+    };
+    res.json(body);
   } catch (err) {
     next(err);
   }

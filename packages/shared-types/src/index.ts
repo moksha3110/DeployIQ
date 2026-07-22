@@ -87,6 +87,14 @@ export interface DeploymentMetricsHistory {
 
 export type MetricsRange = '1h' | '24h' | '7d';
 
+export interface DeploymentAnalysis {
+  rootCause: string;
+  suggestedFixes: string[];
+  likelyConfigIssue: string | null;
+  confidence: number;
+  createdAt: string;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

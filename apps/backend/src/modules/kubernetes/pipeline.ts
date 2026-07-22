@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { getRegistry } from '../build/registry.js';
 import { logger } from '../../common/logger.js';
+import { analyzeFailure } from '../ai/analyze.js';
 import { appendLog } from '../deployments/log.js';
 import { prisma } from '../../prisma/client.js';
 import { applyDeployment, applyHpa, applyIngress, applyNamespace, applyService } from './apply.js';
@@ -97,5 +98,6 @@ export async function runDeployPipeline(deploymentId: string): Promise<void> {
     if (!(err instanceof RolloutFailedError || err instanceof RolloutTimeoutError)) {
       logger.error('Deploy pipeline failed', { deploymentId, err });
     }
+    await analyzeFailure(deploymentId, 'DEPLOY');
   }
 }

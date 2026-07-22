@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { AIAnalysisCard } from '../components/AIAnalysisCard';
 import { MetricsPanel } from '../components/MetricsPanel';
 import { useDeployment, useDeploymentLogs } from '../lib/deployments';
 
 // Namespace (and therefore metrics) only exists once the Kubernetes Service
 // has started applying manifests — see modules/kubernetes/pipeline.ts.
 const NAMESPACE_EXISTS_STATUSES = ['DEPLOYING', 'RUNNING', 'DEPLOY_FAILED'];
+const FAILED_STATUSES = ['BUILD_FAILED', 'DEPLOY_FAILED'];
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-slate-100 text-slate-600',
@@ -62,6 +64,10 @@ export function DeploymentDetail() {
             >
               {deployment.publicUrl}
             </a>
+          )}
+
+          {FAILED_STATUSES.includes(deployment.status) && (
+            <AIAnalysisCard deploymentId={deployment.id} />
           )}
 
           {NAMESPACE_EXISTS_STATUSES.includes(deployment.status) && (
