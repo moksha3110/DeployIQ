@@ -5,6 +5,7 @@ import type { HealthResponse } from '@platform/shared-types';
 import { env } from './config/env.js';
 import { logger } from './common/logger.js';
 import { errorHandler, notFoundHandler } from './common/errors.js';
+import { authRouter } from './modules/auth/router.js';
 
 const app = express();
 
@@ -21,9 +22,10 @@ app.get('/health', (_req, res) => {
   res.json(body);
 });
 
-// Feature routers (auth, github, deployments, monitoring) are mounted here
-// starting Milestone 1 — kept as a single flat list rather than nested
+// Feature routers (github, deployments, monitoring) are mounted here as
+// their milestones land — kept as a single flat list rather than nested
 // sub-apps so the full route surface stays visible from this one file.
+app.use('/api/auth', authRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Tailwind's preflight resets margin but leaves background transparent, so
+   without this the page falls back to the browser's dark-mode default while
+   text stays dark-on-dark. No dark theme designed yet, so pin light for now. */
+html {
+  background-color: white;
+  color-scheme: light;
+}
