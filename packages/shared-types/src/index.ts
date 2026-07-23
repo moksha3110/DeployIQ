@@ -227,6 +227,11 @@ export interface TopologyGraph {
   edges: TopologyEdge[];
 }
 
+export interface QueryResponse {
+  answer: string;
+  aiConfigured: boolean;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

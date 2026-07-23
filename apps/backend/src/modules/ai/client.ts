@@ -228,3 +228,71 @@ export async function diagnoseIncident(context: { summary: string }): Promise<In
 
   return toolUse.input as IncidentDiagnosis;
 }
+
+export interface AgenticTool {
+  definition: Anthropic.Tool;
+  execute: (input: Record<string, unknown>) => Promise<unknown>;
+}
+
+const QUERY_SYSTEM_PROMPT = `You are DeployIQ's infrastructure assistant, answering a developer's question about ONE specific deployment. Use the provided tools to fetch real, current data before answering — never guess or invent numbers. Call only the tools relevant to the question; you don't need to call all of them. Give a direct, concise answer (a few sentences, or a short list) grounded in what the tools actually returned. If a tool call fails or the data doesn't support an answer, say so rather than fabricating one.`;
+
+// A small agentic tool-use loop: unlike diagnose/recommend/diagnoseIncident
+// above (each a single forced tool call with a fixed schema), a natural-
+// language question can need zero, one, or several of a fixed toolkit
+// depending on what's asked — so this lets the model choose (tool_choice
+// left at its default "auto") and loop until it has enough to answer in
+// plain text, capped so a confused model can't loop indefinitely.
+const MAX_AGENTIC_TURNS = 4;
+
+export async function answerQuery(question: string, tools: AgenticTool[]): Promise<string> {
+  const anthropic = getClient();
+  const toolDefs = tools.map((t) => t.definition);
+  const toolMap = new Map(tools.map((t) => [t.definition.name, t.execute]));
+
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: question }];
+
+  for (let turn = 0; turn < MAX_AGENTIC_TURNS; turn++) {
+    const response = await anthropic.messages.create({
+      model: env.ANTHROPIC_MODEL,
+      max_tokens: 1024,
+      system: QUERY_SYSTEM_PROMPT,
+      tools: toolDefs,
+      messages,
+    });
+
+    const toolUses = response.content.filter(
+      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+    );
+    if (toolUses.length === 0) {
+      const textBlock = response.content.find(
+        (b): b is Anthropic.TextBlock => b.type === 'text',
+      );
+      return textBlock?.text ?? 'No answer produced.';
+    }
+
+    messages.push({ role: 'assistant', content: response.content });
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
+      toolUses.map(async (use) => {
+        const exec = toolMap.get(use.name);
+        try {
+          const result = exec
+            ? await exec(use.input as Record<string, unknown>)
+            : { error: `Unknown tool: ${use.name}` };
+          return { type: 'tool_result' as const, tool_use_id: use.id, content: JSON.stringify(result) };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return {
+            type: 'tool_result' as const,
+            tool_use_id: use.id,
+            content: JSON.stringify({ error: message }),
+            is_error: true,
+          };
+        }
+      }),
+    );
+    messages.push({ role: 'user', content: toolResults });
+  }
+
+  return 'I was unable to fully answer within the allotted tool calls — try a more specific question.';
+}

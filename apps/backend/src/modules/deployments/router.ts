@@ -17,6 +17,8 @@ import { computeSecurityScore } from '../analysis/security-score.js';
 import { scanIncidents } from '../analysis/incidents.js';
 import { computeCostForDeployment } from '../analysis/cost.js';
 import { buildTopology } from '../analysis/topology.js';
+import { queryDeployment } from '../analysis/query.js';
+import { AiNotConfiguredError } from '../ai/client.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
 import { deployLimiter } from '../../common/rate-limit.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
@@ -356,6 +358,41 @@ deploymentsRouter.get('/:id/topology', async (req, res, next) => {
   } catch (err) {
     if (err instanceof LiveResourceNotFoundError) {
       next(new HttpError(409, 'NOT_LIVE', err.message));
+      return;
+    }
+    next(err);
+  }
+});
+
+const queryBodySchema = z.object({ question: z.string().min(1).max(500) });
+
+deploymentsRouter.post('/:id/query', async (req, res, next) => {
+  const parsed = queryBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    next(new HttpError(400, 'INVALID_BODY', 'Invalid request body', parsed.error.flatten()));
+    return;
+  }
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const withRepo = await prisma.deployment.findUniqueOrThrow({
+      where: { id: deployment.id },
+      include: { repository: true },
+    });
+    const answer = await queryDeployment(
+      {
+        deploymentId: deployment.id,
+        namespace: deployment.namespace!,
+        appName: APP_NAME,
+        repositoryFullName: withRepo.repository.fullName,
+        branch: deployment.branch,
+        commitSha: deployment.commitSha,
+      },
+      parsed.data.question,
+    );
+    res.json({ answer, aiConfigured: true });
+  } catch (err) {
+    if (err instanceof AiNotConfiguredError) {
+      res.json({ answer: '', aiConfigured: false });
       return;
     }
     next(err);
