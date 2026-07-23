@@ -2,10 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tailwind's preflight resets margin but leaves background transparent, so
-   without this the page falls back to the browser's dark-mode default while
-   text stays dark-on-dark. No dark theme designed yet, so pin light for now. */
-html {
-  background-color: white;
-  color-scheme: light;
+/* shadcn/ui's standard "zinc" light theme tokens. No dark theme designed
+   yet, so :root is the only palette defined — see docs/ARCHITECTURE.md if
+   that changes; the whole point of using CSS variables here (instead of
+   hardcoding colors in tailwind.config.js) is that adding a `.dark`
+   override block later is additive, not a rewrite of every component. */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
 }

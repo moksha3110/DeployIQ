@@ -25,7 +25,7 @@ export function RepoDetail() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-12">
+    <main className="flex flex-col gap-6 px-6 py-8">
       <Link to="/" className="text-sm text-slate-500 hover:underline">
         &larr; Back to repositories
       </Link>
