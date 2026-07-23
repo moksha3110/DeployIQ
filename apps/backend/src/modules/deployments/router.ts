@@ -19,6 +19,7 @@ import { computeCostForDeployment } from '../analysis/cost.js';
 import { buildTopology } from '../analysis/topology.js';
 import { queryDeployment } from '../analysis/query.js';
 import { AiNotConfiguredError } from '../ai/client.js';
+import { streamDeploymentReport } from '../analysis/report.js';
 import { getHistory, getSnapshot } from '../monitoring/metrics.js';
 import { deployLimiter } from '../../common/rate-limit.js';
 import { enqueueDeployJob } from '../../queues/deploy-queue.js';
@@ -397,6 +398,28 @@ deploymentsRouter.post('/:id/query', async (req, res, next) => {
       res.json({ answer: '', aiConfigured: false });
       return;
     }
+    next(err);
+  }
+});
+
+deploymentsRouter.get('/:id/report.pdf', async (req, res, next) => {
+  try {
+    const deployment = await findDeploymentOrFail(req);
+    const withRepo = await prisma.deployment.findUniqueOrThrow({
+      where: { id: deployment.id },
+      include: { repository: true },
+    });
+    await streamDeploymentReport(res, {
+      deploymentId: deployment.id,
+      namespace: deployment.namespace!,
+      appName: APP_NAME,
+      repositoryFullName: withRepo.repository.fullName,
+      branch: deployment.branch,
+      commitSha: deployment.commitSha,
+      status: deployment.status,
+      publicUrl: deployment.publicUrl,
+    });
+  } catch (err) {
     next(err);
   }
 });

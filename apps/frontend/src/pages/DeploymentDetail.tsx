@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { API_BASE_URL } from '../lib/api';
 import { AIAnalysisCard } from '../components/AIAnalysisCard';
 import { AskAIPanel } from '../components/AskAIPanel';
 import { CostBreakdownCard } from '../components/CostBreakdownCard';
@@ -98,6 +99,12 @@ export function DeploymentDetail() {
                 >
                   View infrastructure topology &rarr;
                 </Link>
+                <a
+                  href={`${API_BASE_URL}/api/deployments/${deployment.id}/report.pdf`}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Download PDF report &darr;
+                </a>
               </div>
             </>
           )}
