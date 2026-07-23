@@ -18,57 +18,52 @@ was used.
 ## Screenshots
 
 <table>
-<tr>
-<td width="50%">
+<tr valign="top">
+<td align="center">
 
-**Sign in with GitHub**
-<img src="docs/screenshots/login.png" alt="Login page" />
-
-</td>
-<td width="50%">
-
-**Repositories**
-<img src="docs/screenshots/dashboard.png" alt="Dashboard listing GitHub repositories" />
+**Sign in with GitHub**<br/>
+<img src="docs/screenshots/login.png" alt="Login page" width="420" />
 
 </td>
-</tr>
-<tr>
-<td width="50%">
+<td align="center">
 
-**Live health + security scoring**
-<img src="docs/screenshots/deployment-health.png" alt="Health score, security score, and monitoring panel" />
-
-</td>
-<td width="50%">
-
-**Cost estimate + real build logs**
-<img src="docs/screenshots/deployment-cost.png" alt="Monthly cost breakdown with build log output" />
+**Repositories**<br/>
+<img src="docs/screenshots/dashboard.png" alt="Dashboard listing GitHub repositories" width="420" />
 
 </td>
 </tr>
-<tr>
-<td width="50%">
+<tr valign="top">
+<td align="center">
 
-**AI-generated recommendations**
-<img src="docs/screenshots/deployment-recommendations.png" alt="AI recommendations grounded in live resource usage" />
+**Live health + security scoring**<br/>
+<img src="docs/screenshots/deployment-health.png" alt="Health score, security score, and monitoring panel" width="420" />
 
 </td>
-<td width="50%">
+<td align="center">
 
-**Resource analytics (Recharts)**
-<img src="docs/screenshots/analytics.png" alt="CPU, memory, and health-score trend charts" />
+**Cost estimate + real build logs**<br/>
+<img src="docs/screenshots/deployment-cost.png" alt="Monthly cost breakdown with build log output" width="420" />
 
 </td>
 </tr>
-<tr>
-<td width="100%" align="center">
+<tr valign="top">
+<td align="center">
 
-**Interactive infrastructure topology (React Flow)**
-<img src="docs/screenshots/topology.png" alt="Topology graph from GitHub repo through cluster, namespace, pod, service, and ingress" width="70%" />
+**AI-generated recommendations**<br/>
+<img src="docs/screenshots/deployment-recommendations.png" alt="AI recommendations grounded in live resource usage" width="420" />
+
+</td>
+<td align="center">
+
+**Resource analytics (Recharts)**<br/>
+<img src="docs/screenshots/analytics.png" alt="CPU, memory, and health-score trend charts" width="420" />
 
 </td>
 </tr>
 </table>
+
+**Interactive infrastructure topology (React Flow)**
+<img src="docs/screenshots/topology.png" alt="Topology graph from GitHub repo through cluster, namespace, pod, service, and ingress" width="860" />
 
 Every screenshot above is a real running deployment on a local Minikube
 cluster — nothing mocked. The Trivy CVE scan and CPU/memory numbers are
