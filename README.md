@@ -2,9 +2,12 @@
 
 A self-hosted deployment platform (Render/Railway/Heroku-style) built from
 scratch: GitHub OAuth login, one-click deploy of any repo onto a real
-Kubernetes cluster, live build/deploy logs, health + resource monitoring,
-automatic redeploy on push, and an AI assistant that diagnoses failed
-deployments from logs and pod events.
+Kubernetes cluster, live build/deploy logs, automatic redeploy on push, and
+an AI Infra Intelligence layer that goes well past "is it up" — a live
+0-100 health score, an A-F security scan, AI-generated cost/reliability
+recommendations, automatic incident detection, an interactive infra
+topology graph, natural-language Q&A over live cluster state, and
+downloadable PDF reports.
 
 Built as a portfolio project to demonstrate distributed systems, container
 orchestration, and applied AI engineering — see
@@ -12,20 +15,81 @@ orchestration, and applied AI engineering — see
 rationale, including _why_ each technology was chosen, not just that it
 was used.
 
+## Screenshots
+
+<table>
+<tr>
+<td width="50%">
+
+**Sign in with GitHub**
+<img src="docs/screenshots/login.png" alt="Login page" />
+
+</td>
+<td width="50%">
+
+**Repositories**
+<img src="docs/screenshots/dashboard.png" alt="Dashboard listing GitHub repositories" />
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Live health + security scoring**
+<img src="docs/screenshots/deployment-health.png" alt="Health score, security score, and monitoring panel" />
+
+</td>
+<td width="50%">
+
+**Cost estimate + real build logs**
+<img src="docs/screenshots/deployment-cost.png" alt="Monthly cost breakdown with build log output" />
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**AI-generated recommendations**
+<img src="docs/screenshots/deployment-recommendations.png" alt="AI recommendations grounded in live resource usage" />
+
+</td>
+<td width="50%">
+
+**Resource analytics (Recharts)**
+<img src="docs/screenshots/analytics.png" alt="CPU, memory, and health-score trend charts" />
+
+</td>
+</tr>
+<tr>
+<td width="100%" align="center">
+
+**Interactive infrastructure topology (React Flow)**
+<img src="docs/screenshots/topology.png" alt="Topology graph from GitHub repo through cluster, namespace, pod, service, and ingress" width="70%" />
+
+</td>
+</tr>
+</table>
+
+Every screenshot above is a real running deployment on a local Minikube
+cluster — nothing mocked. The Trivy CVE scan and CPU/memory numbers are
+genuine output from a real `docker build` and real Prometheus queries.
+
 ## Status
 
-All 11 milestones complete — see [`docs/MILESTONES.md`](docs/MILESTONES.md)
-for the build order, and what changed from the original plan along the way
-(and why: every deviation is a decision, not a shortcut).
+All 21 milestones complete (M0-M10 core platform, M11.1-M11.10 AI Infra
+Intelligence) — see [`docs/MILESTONES.md`](docs/MILESTONES.md) for the
+build order, and what changed from the original plan along the way (and
+why: every deviation is a decision, not a shortcut).
 
 Every milestone in this repo was verified against real infrastructure while
 being built — a real GitHub account, a real Minikube cluster, a real Docker
-daemon, a real Prometheus/Loki/Grafana stack — not just typechecked and
-assumed to work. Where that verification found a real bug (there were
-several — an unhandled Redis error crashing the backend, a webhook handler
-crashing on unauthenticated malformed input, an authorization gap, a
-broken third-party logging library), it's called out explicitly in the
-relevant doc rather than smoothed over.
+daemon, a real Prometheus/Loki/Grafana stack, real calls to the Claude API
+— not just typechecked and assumed to work. Where that verification found a
+real bug (there were several — an unhandled Redis error crashing the
+backend, a webhook handler crashing on unauthenticated malformed input, an
+authorization gap, a broken third-party logging library, a CI formatting
+check that silently regressed for four milestones), it's called out
+explicitly in the relevant doc rather than smoothed over.
 
 ## How it works
 
@@ -56,6 +120,13 @@ sequenceDiagram
     API->>W: enqueue build job (repeat)
 ```
 
+Once a deployment is `RUNNING`, the AI Infra Intelligence layer takes over:
+a health score, security scan, and cost estimate compute on-demand from
+live cluster + Prometheus state; a background job snapshots health and
+scans for incidents every 5 minutes independent of whether anyone has the
+dashboard open; and the "Ask AI" panel runs an agentic Claude tool-use loop
+over that same live state to answer free-form questions.
+
 The full component breakdown, sequence diagrams, and the reasoning behind
 each piece live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -71,7 +142,7 @@ each piece live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ```
 apps/
-  frontend/      React + TS + Tailwind SPA, Vitest unit tests, Playwright e2e (apps/frontend/e2e/)
+  frontend/      React + TS + Tailwind + shadcn/ui SPA, Vitest unit tests, Playwright e2e (apps/frontend/e2e/)
   backend/       Express + TS API server, BullMQ worker, Prisma schema, Vitest unit tests
 packages/
   shared-types/  DTOs shared between frontend and backend
