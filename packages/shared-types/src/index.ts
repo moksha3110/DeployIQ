@@ -122,11 +122,7 @@ export interface HealthScoreHistoryPoint {
 
 export type RecommendationSeverity = 'low' | 'medium' | 'high';
 export type RecommendationCategory =
-  | 'resource-limits'
-  | 'probes'
-  | 'autoscaling'
-  | 'availability'
-  | 'other';
+  'resource-limits' | 'probes' | 'autoscaling' | 'availability' | 'other';
 
 export interface Recommendation {
   category: RecommendationCategory;
@@ -160,11 +156,7 @@ export interface SecurityScore {
 }
 
 export type IncidentType =
-  | 'CRASH_LOOP_BACKOFF'
-  | 'IMAGE_PULL_ERROR'
-  | 'OOM_KILLED'
-  | 'PENDING_UNSCHEDULABLE'
-  | 'OTHER';
+  'CRASH_LOOP_BACKOFF' | 'IMAGE_PULL_ERROR' | 'OOM_KILLED' | 'PENDING_UNSCHEDULABLE' | 'OTHER';
 export type IncidentPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type IncidentStatus = 'OPEN' | 'RESOLVED';
 

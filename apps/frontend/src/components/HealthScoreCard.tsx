@@ -80,9 +80,7 @@ export function HealthScoreCard({ deploymentId }: { deploymentId: string }) {
           ))}
         </ul>
       )}
-      {health.factors.length === 0 && (
-        <p className="text-sm text-slate-500">No issues detected.</p>
-      )}
+      {health.factors.length === 0 && <p className="text-sm text-slate-500">No issues detected.</p>}
     </div>
   );
 }

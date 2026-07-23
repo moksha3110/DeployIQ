@@ -36,7 +36,9 @@ function buildSummary(
       : 'CPU: no requests/limits configured.',
     spec.resources
       ? `Memory: requested ${spec.resources.requests.memory ?? 'none'}, limit ${spec.resources.limits.memory ?? 'none'}, actual usage ${formatBytes(metrics.memoryBytes)}` +
-        (memRequest ? ` (${Math.round((metrics.memoryBytes / memRequest) * 100)}% of request)` : '') +
+        (memRequest
+          ? ` (${Math.round((metrics.memoryBytes / memRequest) * 100)}% of request)`
+          : '') +
         (memLimit ? `, ${Math.round((metrics.memoryBytes / memLimit) * 100)}% of limit.` : '.')
       : 'Memory: no requests/limits configured.',
     `Readiness probe: ${spec.hasReadinessProbe ? 'configured' : 'MISSING'}.`,

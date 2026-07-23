@@ -37,7 +37,9 @@ export function RecommendationsCard({ deploymentId }: { deploymentId: string }) 
           type="button"
           disabled={isFetching}
           onClick={() =>
-            queryClient.invalidateQueries({ queryKey: ['deployment-recommendations', deploymentId] })
+            queryClient.invalidateQueries({
+              queryKey: ['deployment-recommendations', deploymentId],
+            })
           }
           className="text-xs text-blue-600 hover:underline disabled:text-slate-400"
         >
@@ -46,11 +48,16 @@ export function RecommendationsCard({ deploymentId }: { deploymentId: string }) 
       </div>
 
       {data.recommendations.length === 0 && (
-        <p className="text-sm text-slate-500">No recommendations — this deployment looks well-configured.</p>
+        <p className="text-sm text-slate-500">
+          No recommendations — this deployment looks well-configured.
+        </p>
       )}
 
       {data.recommendations.map((rec, i) => (
-        <div key={i} className="flex flex-col gap-1 rounded-md border border-slate-100 bg-slate-50 p-3">
+        <div
+          key={i}
+          className="flex flex-col gap-1 rounded-md border border-slate-100 bg-slate-50 p-3"
+        >
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-slate-900">{rec.problem}</span>
             <span

@@ -122,13 +122,19 @@ export function DeploymentTopology() {
   const { data: graph, isPending } = useTopology(id, true);
   const [selected, setSelected] = useState<TopologyNode | null>(null);
 
-  const { nodes, edges } = useMemo(() => (graph ? layout(graph) : { nodes: [], edges: [] }), [graph]);
+  const { nodes, edges } = useMemo(
+    () => (graph ? layout(graph) : { nodes: [], edges: [] }),
+    [graph],
+  );
 
   return (
     <main className="flex min-h-screen flex-col gap-4 px-6 py-8">
       <div className="flex items-center justify-between">
         <div>
-          <Link to={id ? `/deployments/${id}` : '/'} className="text-sm text-slate-500 hover:underline">
+          <Link
+            to={id ? `/deployments/${id}` : '/'}
+            className="text-sm text-slate-500 hover:underline"
+          >
             &larr; Back to deployment
           </Link>
           <h1 className="text-2xl font-semibold text-slate-900">Infrastructure Topology</h1>

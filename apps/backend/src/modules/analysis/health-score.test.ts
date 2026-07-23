@@ -7,7 +7,10 @@ const healthySpec: LiveDeploymentSpec = {
   imageTag: 'sha',
   desiredReplicas: 1,
   availableReplicas: 1,
-  resources: { requests: { cpu: '100m', memory: '128Mi' }, limits: { cpu: '500m', memory: '512Mi' } },
+  resources: {
+    requests: { cpu: '100m', memory: '128Mi' },
+    limits: { cpu: '500m', memory: '512Mi' },
+  },
   hasReadinessProbe: true,
   hasLivenessProbe: true,
   hasHpa: true,
@@ -55,7 +58,11 @@ describe('scoreDeployment', () => {
 
   it('penalizes missing availability proportionally to how many replicas are down', () => {
     const spec = { ...healthySpec, desiredReplicas: 2, availableReplicas: 1 };
-    const result = scoreDeployment(spec, healthyPods, { ...healthyMetrics, desiredReplicas: 2, availableReplicas: 1 });
+    const result = scoreDeployment(spec, healthyPods, {
+      ...healthyMetrics,
+      desiredReplicas: 2,
+      availableReplicas: 1,
+    });
     expect(result.score).toBeLessThan(100);
     expect(result.factors.some((f) => f.category === 'availability')).toBe(true);
   });
@@ -63,7 +70,13 @@ describe('scoreDeployment', () => {
   it('scores a crash-looping deployment as Critical with the specific failure reason', () => {
     const spec = { ...healthySpec, availableReplicas: 0 };
     const pods: LivePodStatus[] = [
-      { name: 'app-1', phase: 'Waiting', ready: false, restartCount: 12, badReason: 'CrashLoopBackOff' },
+      {
+        name: 'app-1',
+        phase: 'Waiting',
+        ready: false,
+        restartCount: 12,
+        badReason: 'CrashLoopBackOff',
+      },
     ];
     const metrics = { ...healthyMetrics, availableReplicas: 0, restarts: 12 };
     const result = scoreDeployment(spec, pods, metrics);
@@ -95,7 +108,13 @@ describe('scoreDeployment', () => {
       hasHpa: false,
     };
     const pods: LivePodStatus[] = [
-      { name: 'app-1', phase: 'Waiting', ready: false, restartCount: 99, badReason: 'CrashLoopBackOff' },
+      {
+        name: 'app-1',
+        phase: 'Waiting',
+        ready: false,
+        restartCount: 99,
+        badReason: 'CrashLoopBackOff',
+      },
     ];
     const metrics = { ...healthyMetrics, availableReplicas: 0, restarts: 99 };
     const result = scoreDeployment(spec, pods, metrics);

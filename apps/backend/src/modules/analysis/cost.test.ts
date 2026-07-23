@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { computeCost, CPU_RATE_PER_CORE_HOUR, HOURS_PER_MONTH, MEMORY_RATE_PER_GB_HOUR } from './cost.js';
+import {
+  computeCost,
+  CPU_RATE_PER_CORE_HOUR,
+  HOURS_PER_MONTH,
+  MEMORY_RATE_PER_GB_HOUR,
+} from './cost.js';
 import type { LiveDeploymentSpec } from '../kubernetes/inspect.js';
 
 const spec: LiveDeploymentSpec = {
@@ -7,7 +12,10 @@ const spec: LiveDeploymentSpec = {
   imageTag: 'sha',
   desiredReplicas: 2,
   availableReplicas: 2,
-  resources: { requests: { cpu: '100m', memory: '128Mi' }, limits: { cpu: '500m', memory: '512Mi' } },
+  resources: {
+    requests: { cpu: '100m', memory: '128Mi' },
+    limits: { cpu: '500m', memory: '512Mi' },
+  },
   hasReadinessProbe: true,
   hasLivenessProbe: true,
   hasHpa: true,
@@ -55,7 +63,12 @@ describe('computeCost', () => {
 
   it('falls back to actual usage when no resources are configured, instead of costing $0', () => {
     const unconfigured: LiveDeploymentSpec = { ...spec, resources: null, desiredReplicas: 1 };
-    const metrics = { ...idleMetrics, cpuCores: 0.05, memoryBytes: 64 * 1024 * 1024, desiredReplicas: 1 };
+    const metrics = {
+      ...idleMetrics,
+      cpuCores: 0.05,
+      memoryBytes: 64 * 1024 * 1024,
+      desiredReplicas: 1,
+    };
     const result = computeCost(unconfigured, metrics);
     expect(result.monthlyCost).toBeGreaterThan(0);
     expect(result.requestedCpuCores).toBeCloseTo(0.05, 5);

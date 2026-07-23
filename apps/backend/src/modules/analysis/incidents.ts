@@ -30,7 +30,8 @@ const DEFAULT_DIAGNOSIS: Record<
   },
   PENDING_UNSCHEDULABLE: {
     rootCause: 'The pod cannot be scheduled onto any node.',
-    recommendedAction: 'Check node resource capacity and any scheduling constraints (taints, affinity).',
+    recommendedAction:
+      'Check node resource capacity and any scheduling constraints (taints, affinity).',
     priority: 'MEDIUM',
   },
   OTHER: {
@@ -59,7 +60,8 @@ export function classifyPod(pod: LivePodStatus): IncidentType | null {
 
 function buildSummary(type: IncidentType, pods: LivePodStatus[], events: LiveEvent[]): string {
   const podLines = pods.map(
-    (p) => `${p.name}: phase=${p.phase}, ready=${p.ready}, restarts=${p.restartCount}, reason=${p.badReason ?? 'none'}`,
+    (p) =>
+      `${p.name}: phase=${p.phase}, ready=${p.ready}, restarts=${p.restartCount}, reason=${p.badReason ?? 'none'}`,
   );
   const eventLines = events
     .filter((e) => e.type !== 'Normal')
@@ -111,9 +113,7 @@ export async function scanIncidents(
     getRecentEvents(namespace),
   ]);
 
-  const detectedTypes = new Set(
-    pods.map(classifyPod).filter((t): t is IncidentType => t !== null),
-  );
+  const detectedTypes = new Set(pods.map(classifyPod).filter((t): t is IncidentType => t !== null));
 
   for (const type of detectedTypes) {
     const existingOpen = await prisma.incident.findFirst({

@@ -19,7 +19,12 @@ const RANGES: MetricsRange[] = ['1h', '24h', '7d', '30d'];
 
 function timeTick(ts: number): string {
   const d = new Date(ts);
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export function DeploymentAnalytics() {
@@ -68,7 +73,12 @@ export function DeploymentAnalytics() {
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={history.cpu}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="timestamp" tickFormatter={timeTick} tick={{ fontSize: 11 }} minTickGap={40} />
+              <XAxis
+                dataKey="timestamp"
+                tickFormatter={timeTick}
+                tick={{ fontSize: 11 }}
+                minTickGap={40}
+              />
               <YAxis tickFormatter={(v) => formatCpu(v)} tick={{ fontSize: 11 }} width={50} />
               <Tooltip
                 labelFormatter={(v) => timeTick(Number(v))}
@@ -89,7 +99,12 @@ export function DeploymentAnalytics() {
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={history.memory}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="timestamp" tickFormatter={timeTick} tick={{ fontSize: 11 }} minTickGap={40} />
+              <XAxis
+                dataKey="timestamp"
+                tickFormatter={timeTick}
+                tick={{ fontSize: 11 }}
+                minTickGap={40}
+              />
               <YAxis tickFormatter={(v) => formatMemory(v)} tick={{ fontSize: 11 }} width={60} />
               <Tooltip
                 labelFormatter={(v) => timeTick(Number(v))}
@@ -113,9 +128,16 @@ export function DeploymentAnalytics() {
         {healthPending && <p className="text-sm text-slate-500">Loading...</p>}
         {healthHistory && healthHistory.length > 1 && (
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={healthHistory.map((h) => ({ ...h, ts: new Date(h.timestamp).getTime() }))}>
+            <LineChart
+              data={healthHistory.map((h) => ({ ...h, ts: new Date(h.timestamp).getTime() }))}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="ts" tickFormatter={timeTick} tick={{ fontSize: 11 }} minTickGap={40} />
+              <XAxis
+                dataKey="ts"
+                tickFormatter={timeTick}
+                tick={{ fontSize: 11 }}
+                minTickGap={40}
+              />
               <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} width={40} />
               <Tooltip labelFormatter={(v) => timeTick(Number(v))} />
               <Line type="monotone" dataKey="score" stroke="#7c3aed" dot={false} strokeWidth={2} />

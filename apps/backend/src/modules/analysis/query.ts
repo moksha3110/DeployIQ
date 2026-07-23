@@ -71,7 +71,13 @@ function buildTools(ctx: DeploymentQueryContext): AgenticTool[] {
         input_schema: NO_ARGS_SCHEMA,
       },
       execute: () =>
-        buildTopology(ctx.namespace, ctx.appName, ctx.repositoryFullName, ctx.branch, ctx.commitSha),
+        buildTopology(
+          ctx.namespace,
+          ctx.appName,
+          ctx.repositoryFullName,
+          ctx.branch,
+          ctx.commitSha,
+        ),
     },
   ];
 }

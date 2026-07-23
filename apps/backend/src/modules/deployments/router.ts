@@ -242,7 +242,9 @@ deploymentsRouter.get('/:id/health', async (req, res, next) => {
   }
 });
 
-const healthHistoryQuerySchema = z.object({ limit: z.coerce.number().int().positive().max(2000).default(200) });
+const healthHistoryQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(2000).default(200),
+});
 
 deploymentsRouter.get('/:id/health/history', async (req, res, next) => {
   const parsed = healthHistoryQuerySchema.safeParse(req.query);

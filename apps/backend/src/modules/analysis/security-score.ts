@@ -108,7 +108,10 @@ export function scoreSecurity(
     add({
       id: 'unpinned-image-tag',
       severity: 'medium',
-      title: spec.imageTag === null ? 'Image has no tag (defaults to :latest)' : 'Image is tagged :latest',
+      title:
+        spec.imageTag === null
+          ? 'Image has no tag (defaults to :latest)'
+          : 'Image is tagged :latest',
       description:
         'An unpinned image tag means the exact code running is not reproducible and can change silently on the next pod restart/reschedule.',
       fix: 'Tag images with an immutable reference (commit SHA or content digest), e.g. myapp@sha256:...',
@@ -159,9 +162,7 @@ export function scoreSecurity(
     });
   }
 
-  const score = clamp(
-    100 - findings.reduce((sum, f) => sum + SEVERITY_DEDUCTIONS[f.severity], 0),
-  );
+  const score = clamp(100 - findings.reduce((sum, f) => sum + SEVERITY_DEDUCTIONS[f.severity], 0));
 
   return { score, grade: gradeFor(score), findings };
 }

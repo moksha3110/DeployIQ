@@ -1,6 +1,10 @@
 import type { DeploymentMetrics } from '@platform/shared-types';
 import type { LiveDeploymentSpec, LivePodStatus } from '../kubernetes/inspect.js';
-import { getLiveDeploymentSpec, getLivePods, LiveResourceNotFoundError } from '../kubernetes/inspect.js';
+import {
+  getLiveDeploymentSpec,
+  getLivePods,
+  LiveResourceNotFoundError,
+} from '../kubernetes/inspect.js';
 import { getSnapshot } from '../monitoring/metrics.js';
 
 export interface HealthScoreFactor {
@@ -81,8 +85,7 @@ export function scoreDeployment(
   // Availability — the single biggest signal. Fully down (0 available) is
   // worse than "1 of 3 replicas missing", scaled linearly.
   if (spec.desiredReplicas > 0) {
-    const missingFraction =
-      (spec.desiredReplicas - spec.availableReplicas) / spec.desiredReplicas;
+    const missingFraction = (spec.desiredReplicas - spec.availableReplicas) / spec.desiredReplicas;
     if (missingFraction > 0) {
       deduct(
         'availability',

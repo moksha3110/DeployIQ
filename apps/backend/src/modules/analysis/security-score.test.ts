@@ -12,7 +12,10 @@ const currentPlatformSpec: LiveDeploymentSpec = {
   imageTag: '4128de64f9a5b48910ffc10b26c98928cd47bffe',
   desiredReplicas: 1,
   availableReplicas: 1,
-  resources: { requests: { cpu: '100m', memory: '128Mi' }, limits: { cpu: '500m', memory: '512Mi' } },
+  resources: {
+    requests: { cpu: '100m', memory: '128Mi' },
+    limits: { cpu: '500m', memory: '512Mi' },
+  },
   hasReadinessProbe: true,
   hasLivenessProbe: true,
   hasHpa: true,
@@ -71,7 +74,11 @@ describe('scoreSecurity', () => {
     const result = scoreSecurity(spec, 'LoadBalancer', false);
     expect(result.grade).toBe('F');
     expect(result.findings.map((f) => f.id)).toEqual(
-      expect.arrayContaining(['privileged-container', 'hostpath-volume', 'publicly-exposed-service']),
+      expect.arrayContaining([
+        'privileged-container',
+        'hostpath-volume',
+        'publicly-exposed-service',
+      ]),
     );
   });
 

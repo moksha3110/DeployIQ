@@ -3,7 +3,14 @@ import { classifyPod } from './incidents.js';
 import type { LivePodStatus } from '../kubernetes/inspect.js';
 
 function pod(overrides: Partial<LivePodStatus>): LivePodStatus {
-  return { name: 'app-1', phase: 'Running', ready: true, restartCount: 0, badReason: null, ...overrides };
+  return {
+    name: 'app-1',
+    phase: 'Running',
+    ready: true,
+    restartCount: 0,
+    badReason: null,
+    ...overrides,
+  };
 }
 
 describe('classifyPod', () => {

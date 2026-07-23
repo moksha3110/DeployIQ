@@ -49,7 +49,8 @@ export async function buildTopology(
   const nodes: TopologyNode[] = [];
   const edges: TopologyEdge[] = [];
   let edgeId = 0;
-  const link = (source: string, target: string) => edges.push({ id: `e${edgeId++}`, source, target });
+  const link = (source: string, target: string) =>
+    edges.push({ id: `e${edgeId++}`, source, target });
 
   nodes.push({
     id: 'repository',
@@ -102,11 +103,7 @@ export async function buildTopology(
 
   for (const pod of pods) {
     const podId = `pod-${pod.name}`;
-    const podStatus: TopologyStatus = pod.badReason
-      ? 'error'
-      : pod.ready
-        ? 'healthy'
-        : 'warning';
+    const podStatus: TopologyStatus = pod.badReason ? 'error' : pod.ready ? 'healthy' : 'warning';
     nodes.push({
       id: podId,
       type: 'pod',

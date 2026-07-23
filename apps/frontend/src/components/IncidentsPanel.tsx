@@ -41,7 +41,9 @@ export function IncidentsPanel({ deploymentId }: { deploymentId: string }) {
         <div
           key={incident.id}
           className={`flex flex-col gap-1 rounded-md border p-3 ${
-            incident.status === 'OPEN' ? 'border-red-100 bg-red-50' : 'border-slate-100 bg-slate-50 opacity-70'
+            incident.status === 'OPEN'
+              ? 'border-red-100 bg-red-50'
+              : 'border-slate-100 bg-slate-50 opacity-70'
           }`}
         >
           <div className="flex items-center justify-between gap-2">

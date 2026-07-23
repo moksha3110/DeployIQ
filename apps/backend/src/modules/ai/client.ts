@@ -88,11 +88,7 @@ export async function diagnose(context: {
 
 export type RecommendationSeverity = 'low' | 'medium' | 'high';
 export type RecommendationCategory =
-  | 'resource-limits'
-  | 'probes'
-  | 'autoscaling'
-  | 'availability'
-  | 'other';
+  'resource-limits' | 'probes' | 'autoscaling' | 'availability' | 'other';
 
 export interface Recommendation {
   category: RecommendationCategory;
@@ -127,7 +123,8 @@ const RECOMMENDATIONS_TOOL: Anthropic.Tool = {
             },
             impact: {
               type: 'string',
-              description: 'What happens if this is left as-is (cost, reliability, or performance).',
+              description:
+                'What happens if this is left as-is (cost, reliability, or performance).',
             },
             fix: {
               type: 'string',
@@ -189,16 +186,19 @@ const INCIDENT_TOOL: Anthropic.Tool = {
     properties: {
       rootCause: {
         type: 'string',
-        description: 'A concise (1-3 sentence) explanation of what is actually wrong, grounded in the pod status and events given.',
+        description:
+          'A concise (1-3 sentence) explanation of what is actually wrong, grounded in the pod status and events given.',
       },
       recommendedAction: {
         type: 'string',
-        description: 'The single most useful next step to take right now, as a concrete command or config change.',
+        description:
+          'The single most useful next step to take right now, as a concrete command or config change.',
       },
       priority: {
         type: 'string',
         enum: ['low', 'medium', 'high', 'critical'],
-        description: 'How urgently this needs attention: critical = full outage now, high = degraded/at risk, medium = not yet impacting availability, low = cosmetic.',
+        description:
+          'How urgently this needs attention: critical = full outage now, high = degraded/at risk, medium = not yet impacting availability, low = cosmetic.',
       },
     },
     required: ['rootCause', 'recommendedAction', 'priority'],
@@ -264,9 +264,7 @@ export async function answerQuery(question: string, tools: AgenticTool[]): Promi
       (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
     );
     if (toolUses.length === 0) {
-      const textBlock = response.content.find(
-        (b): b is Anthropic.TextBlock => b.type === 'text',
-      );
+      const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
       return textBlock?.text ?? 'No answer produced.';
     }
 
@@ -279,7 +277,11 @@ export async function answerQuery(question: string, tools: AgenticTool[]): Promi
           const result = exec
             ? await exec(use.input as Record<string, unknown>)
             : { error: `Unknown tool: ${use.name}` };
-          return { type: 'tool_result' as const, tool_use_id: use.id, content: JSON.stringify(result) };
+          return {
+            type: 'tool_result' as const,
+            tool_use_id: use.id,
+            content: JSON.stringify(result),
+          };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           return {
