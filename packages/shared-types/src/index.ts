@@ -195,6 +195,38 @@ export interface CostBreakdown {
   pricingNote: string;
 }
 
+export type TopologyNodeType =
+  | 'repository'
+  | 'cluster'
+  | 'namespace'
+  | 'deployment'
+  | 'pod'
+  | 'service'
+  | 'ingress'
+  | 'configmap'
+  | 'secret';
+
+export type TopologyStatus = 'healthy' | 'warning' | 'error' | 'unknown';
+
+export interface TopologyNode {
+  id: string;
+  type: TopologyNodeType;
+  label: string;
+  status: TopologyStatus;
+  details: Record<string, string | number | boolean | null>;
+}
+
+export interface TopologyEdge {
+  id: string;
+  source: string;
+  target: string;
+}
+
+export interface TopologyGraph {
+  nodes: TopologyNode[];
+  edges: TopologyEdge[];
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

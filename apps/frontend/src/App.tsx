@@ -3,6 +3,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Dashboard } from './pages/Dashboard';
 import { DeploymentAnalytics } from './pages/DeploymentAnalytics';
 import { DeploymentDetail } from './pages/DeploymentDetail';
+import { DeploymentTopology } from './pages/DeploymentTopology';
 import { Login } from './pages/Login';
 import { RepoDetail } from './pages/RepoDetail';
 
@@ -39,6 +40,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <DeploymentAnalytics />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/deployments/:id/topology"
+        element={
+          <ProtectedRoute>
+            <DeploymentTopology />
           </ProtectedRoute>
         }
       />
